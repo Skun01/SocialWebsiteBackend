@@ -5,6 +5,15 @@ using Serilog;
 using SocialWebsite.Data;
 using SocialWebsite.Extensions;
 using SocialWebsite.Shared.Exceptions;
+using FluentValidation;
+using FluentValidation.AspNetCore;
+using SocialWebsite.Interfaces.Repositories;
+using SocialWebsite.Data.Repositories;
+using SocialWebsite.Interfaces.Services;
+using SocialWebsite.Services;
+using SocialWebsite.Endpoints;
+using Microsoft.AspNetCore.Identity;
+using SocialWebsite.Entities;
 //BUILDER
 var builder = WebApplication.CreateBuilder(args);
 // Init serilog
@@ -18,6 +27,18 @@ builder.Host.UseSerilog();
 // Database context
 string connectionString = builder.Configuration["ConnectionStrings:SqlDocker"]!;
 builder.Services.AddDbContext<SocialWebsiteContext>(options => options.UseSqlServer(connectionString));
+
+// Repository Register
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// Register all valiators for DTOs
+builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
+
+// Endpoint services register
+builder.Services.AddScoped<IUserService, UserService>();
+
+// Password hasher
+builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
 // swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -70,4 +91,5 @@ if (app.Environment.IsDevelopment())
 }
 
 //ENDPOINT
+app.MapUserEndpoints("/users");
 app.Run();

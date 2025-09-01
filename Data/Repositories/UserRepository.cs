@@ -44,6 +44,13 @@ public class UserRepository : IUserRepository
             .AnyAsync(u => u.Email == email);
     }
 
+    public async Task<bool> IsUserNameExistAsync(string userName)
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .AnyAsync(u => u.Username == userName);
+    }
+
     public async Task UpdateAsync(User entity)
     {
         _context.Users.Update(entity);

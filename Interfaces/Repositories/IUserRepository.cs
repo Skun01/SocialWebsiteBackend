@@ -6,4 +6,5 @@ namespace SocialWebsite.Interfaces.Repositories;
 public interface IUserRepository : IGenericRepository<User>
 {
     Task<bool> IsUserEmailExistAsync(string email);
+    Task<bool> IsUserNameExistAsync(string userName);
 }

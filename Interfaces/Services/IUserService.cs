@@ -7,7 +7,7 @@ namespace SocialWebsite.Interfaces.Services;
 
 public interface IUserService
 {
-    Task<Result<User>> GetUserByIdAsync(Guid id);
-    Task<Result<IEnumerable<User>>> GetAllUserAsync();
-    Task<Result<User>> CreateUserAsync(CreateUserRequest request);
+    Task<Result<UserResponse>> GetUserByIdAsync(Guid id);
+    Task<Result<IEnumerable<UserResponse>>> GetAllUserAsync();
+    Task<Result<UserResponse>> CreateUserAsync(CreateUserRequest request);
 }

@@ -17,10 +17,7 @@ public class SerilogRequestLogMiddlware
         await _next(context);
         sw.Stop();
 
-        Log.ForContext("path", context.Request.Path)
-        .ForContext("status", context.Response.StatusCode)
-        .ForContext("elapsedMs", sw.ElapsedMilliseconds)
-        .Information("HTTP {Method} {Path} -> {Status} in {Elapsed} ms",
-        context.Request.Method, context.Request.Path, context.Response.StatusCode, sw.ElapsedMilliseconds);
+        Log.Information("HTTP {Method} {Path} -> {Status} in {Elapsed} ms",
+            context.Request.Method, context.Request.Path, context.Response.StatusCode, sw.ElapsedMilliseconds);
     }
 }

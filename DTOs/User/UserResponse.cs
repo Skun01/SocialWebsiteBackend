@@ -1,17 +1,15 @@
-using Microsoft.AspNetCore.Identity;
 using SocialWebsite.Shared.Enums;
 
 namespace SocialWebsite.DTOs.User;
 
-public record class CreateUserRequest(
+public record class UserResponse(
+    Guid Id,
     string UserName,
     string Email,
-    string Password,
     string FirstName,
     string LastName,
     DateTime? DateOfBirth,
     Gender Gender,
     string? ProfilePictureUrl,
-    bool IsEmailVerified,
-    bool IsActive
+    bool IsEmailVerified
 );
