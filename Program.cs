@@ -1,5 +1,8 @@
+using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using Serilog;
+using SocialWebsite.Data;
 using SocialWebsite.Extensions;
 using SocialWebsite.Shared.Exceptions;
 //BUILDER
@@ -11,6 +14,10 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .CreateLogger();
 builder.Host.UseSerilog();
+
+// Database context
+string connectionString = builder.Configuration["ConnectionStrings:SqlDocker"]!;
+builder.Services.AddDbContext<SocialWebsiteContext>(options => options.UseSqlServer(connectionString));
 
 // swagger
 builder.Services.AddEndpointsApiExplorer();
@@ -40,6 +47,13 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+
+// converter global from enum to string and versal
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
+});
+
 // global error handler
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
