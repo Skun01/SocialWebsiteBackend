@@ -1,6 +1,7 @@
 using Microsoft.OpenApi.Models;
 using Serilog;
 using SocialWebsite.Extensions;
+using SocialWebsite.Shared.Exceptions;
 //BUILDER
 var builder = WebApplication.CreateBuilder(args);
 // Init serilog
@@ -39,11 +40,15 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 });
+// global error handler
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 //APPLICATION
 var app = builder.Build();
 // Middleware:
 app.UseSeriRequestLog();
+app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -51,5 +56,4 @@ if (app.Environment.IsDevelopment())
 }
 
 //ENDPOINT
-
 app.Run();
