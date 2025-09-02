@@ -33,7 +33,7 @@ public static class UserEndpoints
                 : Results.BadRequest(result.Error);
         });
 
-        group.MapGet("/{id}", async (Guid id, IUserService userService) =>
+        group.MapGet("/{id:guid}", async (Guid id, IUserService userService) =>
         {
             var result = await userService.GetUserByIdAsync(id);
             return result.IsSuccess ? Results.Ok(result.Value) : Results.NotFound(result.Error);
@@ -43,6 +43,30 @@ public static class UserEndpoints
         {
             var result = await userService.GetAllUserAsync();
             return Results.Ok(result.Value);
+        });
+
+        group.MapPut("/{id:guid}", async (Guid id, [FromBody] UpdateUserRequest request,
+            IUserService userService, IValidator<UpdateUserRequest> validator) =>
+        {
+            var validationResult = await validator.ValidateAsync(request);
+            if (validationResult.IsValid)
+            {
+                var result = await userService.UpdateUserAsync(id, request);
+                return result.IsSuccess ? Results.NoContent() : Results.BadRequest(result.Error);
+            }
+            var errors = validationResult.Errors
+                .GroupBy(e => e.PropertyName)
+                .ToDictionary(
+                    g => g.Key,
+                    g => g.Select(e => e.ErrorMessage).ToArray()
+                );
+            return Results.ValidationProblem(errors);
+        });
+
+        group.MapDelete("/{id:guid}", async (Guid id, IUserService userService) =>
+        {
+            var result = await userService.DeleteUserAsync(id);
+            return result.IsSuccess ? Results.NoContent() : Results.NotFound(result.Error);
         });
 
         return group;
