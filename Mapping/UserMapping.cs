@@ -38,4 +38,22 @@ public static class UserMapping
             IsActive = false,
         };
     }
+
+    public static User ToEntity(this RegisterRequest request)
+    {
+        return new User
+        {
+            Id = Guid.NewGuid(),
+            Username = request.UserName,
+            Email = request.Email,
+            PasswordHash = "",
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            DateOfBirth = request.DateOfBirth,
+            Gender = request.Gender,
+            ProfilePictureUrl = request.ProfilePictureUrl,
+            IsEmailVerified = false,
+            IsActive = false,
+        };
+    }
 }

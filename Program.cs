@@ -39,6 +39,8 @@ builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 
 // Endpoint services register
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ITokenService, TokenService>();
 
 // Password hasher
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
@@ -101,12 +103,13 @@ builder.Services.AddAuthentication(options =>
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
         };
     });
-
+builder.Services.AddAuthorization();
 
 //APPLICATION
 var app = builder.Build();
 // Middleware:
 app.UseAuthentication();
+app.UseAuthorization();
 app.UseSeriRequestLog();
 app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
@@ -117,4 +120,5 @@ if (app.Environment.IsDevelopment())
 
 //ENDPOINT
 app.MapUserEndpoints("/users");
+app.MapAuthEndpoints("/auth");
 app.Run();

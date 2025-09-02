@@ -36,7 +36,14 @@ public class UserRepository : IUserRepository
             .AsNoTracking()
             .FirstOrDefaultAsync(u => u.Id == id);
     }
-    
+
+    public async Task<User?> GetByEmailAsync(string email)
+    {
+        return await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Email == email);
+    }
+
     public async Task<bool> IsUserEmailExistAsync(string email)
     {
         return await _context.Users
