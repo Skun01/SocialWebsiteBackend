@@ -14,6 +14,9 @@ using SocialWebsite.Services;
 using SocialWebsite.Endpoints;
 using Microsoft.AspNetCore.Identity;
 using SocialWebsite.Entities;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 //BUILDER
 var builder = WebApplication.CreateBuilder(args);
 // Init serilog
@@ -79,9 +82,31 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
+// Authentication and Authorization
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        };
+    });
+
+
 //APPLICATION
 var app = builder.Build();
 // Middleware:
+app.UseAuthentication();
 app.UseSeriRequestLog();
 app.UseExceptionHandler();
 if (app.Environment.IsDevelopment())
