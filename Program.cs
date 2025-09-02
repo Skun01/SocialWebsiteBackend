@@ -41,6 +41,7 @@ builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IFileService, LocalFileService>();
 
 // Password hasher
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
@@ -108,6 +109,7 @@ builder.Services.AddAuthorization();
 //APPLICATION
 var app = builder.Build();
 // Middleware:
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseSeriRequestLog();
@@ -121,4 +123,5 @@ if (app.Environment.IsDevelopment())
 //ENDPOINT
 app.MapUserEndpoints("/users");
 app.MapAuthEndpoints("/auth");
+app.MapFileEndpoints("/files");
 app.Run();
