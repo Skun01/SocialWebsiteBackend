@@ -63,4 +63,15 @@ public class UserRepository : IUserRepository
         _context.Users.Update(entity);
         await _context.SaveChangesAsync();
     }
+
+    public async Task UpdateVerifyEmailByIdAsync(Guid userId, bool IsEmailVerified)
+    {
+        User? user = _context.Users.FirstOrDefault(u => u.Id == userId);
+        if (user is null)
+            return;
+
+        user.IsEmailVerified = IsEmailVerified;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+    }
 }

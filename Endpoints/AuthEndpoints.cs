@@ -27,22 +27,28 @@ public static class AuthEndpoints
             return Results.ValidationProblem(validationResult.ToDictionary());
         });
 
-        group.MapPost("/register", async (RegisterRequest request,
+        group.MapPost("/register", async (RegisterRequest request, HttpContext httpContext,
             IAuthService authService, IValidator<RegisterRequest> Validator) =>
         {
             var validationResult = await Validator.ValidateAsync(request);
             if (validationResult.IsValid)
             {
-                var result = await authService.RegisterAsync(request);
-                return result.IsSuccess ? Results.Ok() : Results.BadRequest(result.Error);
+                var result = await authService.RegisterAsync(request, httpContext, "ConfirmEmailEndpoint");
+                return result.IsSuccess ? Results.Ok("Register successful, please check email to verify") : Results.BadRequest(result.Error);
             }
 
             return Results.ValidationProblem(validationResult.ToDictionary());
         });
 
+        group.MapGet("/confirm-email", async ([FromQuery] string token, IAuthService authService) =>
+        {
+            var result = await authService.VerifyEmailAsync(token);
+            return result.IsSuccess ? Results.Ok("Verify email successfuly") : Results.BadRequest(result.Error);
+        }).WithName("ConfirmEmailEndpoint");
+
         group.MapGet("/me", async (HttpContext context, IAuthService authService) =>
         {
-            var result = await authService.GetCurrentUserLogin(context);
+            var result = await authService.GetCurrentUserLoginAsync(context);
             return result.IsSuccess ? Results.Ok(result.Value) : Results.BadRequest(result.Error);
         }).RequireAuthorization();
         return group;

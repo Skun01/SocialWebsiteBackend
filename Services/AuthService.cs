@@ -1,5 +1,6 @@
 using System;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Identity;
 using SocialWebsite.DTOs.User;
 using SocialWebsite.Entities;
@@ -15,14 +16,19 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepo;
     private readonly IPasswordHasher<User> _passwordHasher;
     private readonly ITokenService _tokenService;
-    public AuthService(IUserRepository userRepository, IPasswordHasher<User> passwordHasher, ITokenService tokenService)
+    private readonly LinkGenerator _linkGenerator;
+    private readonly IEmailSenderService _emailSender;
+    public AuthService(IUserRepository userRepository, IPasswordHasher<User> passwordHasher,
+        ITokenService tokenService, LinkGenerator linkGenerator, IEmailSenderService emailSenderService)
     {
         _userRepo = userRepository;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
+        _linkGenerator = linkGenerator;
+        _emailSender = emailSenderService;
     }
 
-    public async Task<Result<UserResponse>> GetCurrentUserLogin(HttpContext httpContext)
+    public async Task<Result<UserResponse>> GetCurrentUserLoginAsync(HttpContext httpContext)
     {
         var userIdClaim = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userIdClaim is null)
@@ -52,7 +58,7 @@ public class AuthService : IAuthService
         return Result.Success(new LoginResponse(accesToken));
     }
 
-    public async Task<Result> RegisterAsync(RegisterRequest request)
+    public async Task<Result> RegisterAsync(RegisterRequest request, HttpContext context, string endpointName)
     {
         bool isEmailExist = await _userRepo.IsUserEmailExistAsync(request.Email);
         if (isEmailExist)
@@ -65,6 +71,26 @@ public class AuthService : IAuthService
         User newUser = request.ToEntity();
         newUser.PasswordHash = _passwordHasher.HashPassword(newUser, request.Password);
         await _userRepo.AddAsync(newUser);
+        string token = _tokenService.CreateEmailConfirmationToken(newUser);
+        var callbackUrl = _linkGenerator.GetUriByName(
+            context,
+            endpointName,
+            new { token }
+        );
+         var subject = "Confirm your account";
+        var body = $"<p>Please confirm your account by <a href=\"{callbackUrl}\">clicking here</a>.</p>";
+        await _emailSender.SendEmailAsync(newUser.Email, subject, body);
+        
+        return Result.Success();
+    }
+
+    public async Task<Result> VerifyEmailAsync(string token)
+    {
+        Guid? userId = _tokenService.ValidateAndGetUserIdFromEmailToken(token);
+        if (userId is null)
+            return Result.Failure(new Error("VerifyEmail.TokenNotValid", "Token has been expired or not valid"));
+
+        await _userRepo.UpdateVerifyEmailByIdAsync((Guid)userId, true);
         return Result.Success();
     }
 }
