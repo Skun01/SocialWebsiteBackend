@@ -14,7 +14,7 @@ public class EmailSenderService : IEmailSenderService
     public EmailSenderService(IConfiguration configuration)
     {
         _smtpServer = configuration["EmailSettings:SmtpServer"]!;
-        _port = int.Parse(configuration["EmailSettings:Port"])!;
+        _port = int.Parse(configuration["EmailSettings:Port"]!);
         _fromAddress = configuration["EmailSettings:FromAddress"]!;
         _password = configuration["EmailSettings:Password"]!;
     }

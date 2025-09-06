@@ -78,7 +78,7 @@ public class AuthService : IAuthService
             new { token }
         );
          var subject = "Confirm your account";
-        var body = $"<p>Please confirm your account by <a href=\"{callbackUrl}\">clicking here</a>.</p>";
+        var body = $"<p>Please confirm your {newUser.Username} account by <a href=\"{callbackUrl}\">clicking here</a>.</p>";
         await _emailSender.SendEmailAsync(newUser.Email, subject, body);
         
         return Result.Success();

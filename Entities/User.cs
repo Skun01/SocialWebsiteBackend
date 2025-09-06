@@ -25,5 +25,9 @@ public class User
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-
+    public virtual List<Post> Posts { set; get; } = [];
+    public virtual List<Comment> Comments { set; get; } = [];
+    public virtual List<Like> Likes { set; get; } = [];
+    public virtual List<Friendship> SentFriendships { set; get; } = [];
+    public virtual List<Friendship> ReceivedFriendships { set; get; } = [];
 }
