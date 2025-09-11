@@ -11,6 +11,7 @@ public class SocialWebsiteContext : DbContext
     public DbSet<Comment> Comments { set; get; }
     public DbSet<Post> Posts { set; get; }
     public DbSet<Friendship> Friendships { set; get; }
+    public DbSet<PasswordResetToken> PasswordResetTokens { set; get; }
     public SocialWebsiteContext(DbContextOptions<SocialWebsiteContext> options) : base(options) { }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

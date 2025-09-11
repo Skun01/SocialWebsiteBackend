@@ -1,7 +1,10 @@
 using System;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
+using BCrypt.Net;
 using Microsoft.AspNetCore.Identity;
+using SocialWebsite.DTOs.Auth;
 using SocialWebsite.DTOs.User;
 using SocialWebsite.Entities;
 using SocialWebsite.Interfaces.Repositories;
@@ -18,14 +21,19 @@ public class AuthService : IAuthService
     private readonly ITokenService _tokenService;
     private readonly LinkGenerator _linkGenerator;
     private readonly IEmailSenderService _emailSender;
+    private readonly IConfiguration _config;
+    private readonly IPasswordResetTokenRepository _passwordResetTokenRepo;
     public AuthService(IUserRepository userRepository, IPasswordHasher<User> passwordHasher,
-        ITokenService tokenService, LinkGenerator linkGenerator, IEmailSenderService emailSenderService)
+        ITokenService tokenService, LinkGenerator linkGenerator, IEmailSenderService emailSenderService,
+        IConfiguration configuration, IPasswordResetTokenRepository passwordResetTokenRepository)
     {
         _userRepo = userRepository;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
         _linkGenerator = linkGenerator;
         _emailSender = emailSenderService;
+        _config = configuration;
+        _passwordResetTokenRepo = passwordResetTokenRepository;
     }
 
     public async Task<Result<UserResponse>> GetCurrentUserLoginAsync(HttpContext httpContext)
@@ -77,10 +85,10 @@ public class AuthService : IAuthService
             endpointName,
             new { token }
         );
-         var subject = "Confirm your account";
+        var subject = "Confirm your account";
         var body = $"<p>Please confirm your {newUser.Username} account by <a href=\"{callbackUrl}\">clicking here</a>.</p>";
         await _emailSender.SendEmailAsync(newUser.Email, subject, body);
-        
+
         return Result.Success();
     }
 
@@ -91,6 +99,68 @@ public class AuthService : IAuthService
             return Result.Failure(new Error("VerifyEmail.TokenNotValid", "Token has been expired or not valid"));
 
         await _userRepo.UpdateVerifyEmailByIdAsync((Guid)userId, true);
+        return Result.Success();
+    }
+
+    public async Task<Result> SendResetPasswordEMailAsync(ForgotPasswordRequest request)
+    {
+        User? user = await _userRepo.GetByEmailAsync(request.Email);
+        if (user is null)
+            return Result.Success();
+
+        Guid publicId = Guid.NewGuid();
+        string secretToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+        string secretTokenHash = BCrypt.Net.BCrypt.HashPassword(secretToken);
+        int expiresMinutes = 60;
+
+        PasswordResetToken passwordResetToken = new()
+        {
+            Id = publicId,
+            UserId = user.Id,
+            TokenHash = secretTokenHash,
+            ExpirationUtc = DateTime.UtcNow.AddMinutes(expiresMinutes),
+            IsUsed = false
+        };
+        await _passwordResetTokenRepo.AddAsync(passwordResetToken);
+
+        string resetUrl = $"{_config["Frontend:BaseUrl"]}/reset-password?id={publicId}&token={secretToken}";
+        Console.WriteLine(resetUrl);
+        await _emailSender.SendEmailAsync(request.Email,
+            subject: "Reset your password",
+            htmlMessage: $"""
+                       Hello {user.Username}! My name is thaitruong! Click the link to reset your password. 
+                       This link expires in {expiresMinutes} Minutes.<br/>
+                       <a href="{resetUrl}">Reset Password</a>
+                       """
+        );
+
+        return Result.Success();
+    }
+
+    public async Task<Result> ResetPasswordAsync(Guid publicId, string token, string newPassword)
+    {
+        var passwordResetToken = await _passwordResetTokenRepo.GetByIdAsync(publicId);
+        if (passwordResetToken is null)
+            return Result.Failure(new Error("400", "Invalid token"));
+
+        if (passwordResetToken.ExpirationUtc < DateTime.UtcNow)
+            return Result.Failure(new Error("400", "Token expired"));
+
+        if (!BCrypt.Net.BCrypt.Verify(token, passwordResetToken.TokenHash))
+            return Result.Failure(new Error("400", "Token not valid"));
+
+        if (passwordResetToken.IsUsed)
+            return Result.Failure(new Error("400", "Token already used"));
+
+        User? user = await _userRepo.GetByIdAsync(passwordResetToken.UserId);
+        if (user is null)
+            return Result.Failure(new Error("404", "User not found"));
+
+        user.PasswordHash = _passwordHasher.HashPassword(user, newPassword);
+        await _userRepo.UpdateAsync(user);
+
+        await _passwordResetTokenRepo.MarkUsedAsync(passwordResetToken);
+        await _passwordResetTokenRepo.DeleteAllTokenByUserId(passwordResetToken.UserId, publicId);
         return Result.Success();
     }
 }

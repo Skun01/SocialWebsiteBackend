@@ -23,10 +23,10 @@ public class EmailSenderService : IEmailSenderService
         var client = new SmtpClient(_smtpServer, _port)
         {
             Credentials = new NetworkCredential(_fromAddress, _password),
-            EnableSsl = true 
+            EnableSsl = true
         };
         return client.SendMailAsync(
             new MailMessage(_fromAddress, email, subject, htmlMessage) { IsBodyHtml = true }
         );
-    }
+    } 
 }

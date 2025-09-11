@@ -1,4 +1,5 @@
 using System;
+using SocialWebsite.DTOs.Auth;
 using SocialWebsite.DTOs.User;
 using SocialWebsite.Shared;
 
@@ -10,4 +11,6 @@ public interface IAuthService
     Task<Result> RegisterAsync(RegisterRequest request, HttpContext context, string endpointName);
     Task<Result<UserResponse>> GetCurrentUserLoginAsync(HttpContext httpContext);
     Task<Result> VerifyEmailAsync(string token);
+    Task<Result> SendResetPasswordEMailAsync(ForgotPasswordRequest request);
+    Task<Result> ResetPasswordAsync(Guid publicId, string token, string password);
 }

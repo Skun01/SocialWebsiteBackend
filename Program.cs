@@ -33,6 +33,8 @@ builder.Services.AddDbContext<SocialWebsiteContext>(options => options.UseSqlSer
 
 // Repository Register
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+
 
 // Register all valiators for DTOs
 builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
