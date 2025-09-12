@@ -22,5 +22,6 @@ public class Post
     public virtual User User { set; get; } = null!;
     public virtual List<Comment> Comments { set; get; } = [];
     public virtual List<Like> Likes { set; get; } = [];
+    public virtual List<PostFile> Files { set; get; } = [];
 
 }
