@@ -14,9 +14,7 @@ public class Post
     [MaxLength(3000)]
     public string Content { set; get; } = string.Empty;
     [Column(TypeName = "nvarchar(max)")]
-    public string? ImageUrls { set; get; }
     public PostPrivacy Privacy { set; get; } = PostPrivacy.Public;
-    public bool IsDeleted { set; get; }
     public DateTime CreatedAt { set; get; } = DateTime.UtcNow;
     public DateTime UpdatedAt { set; get; }
     public virtual User User { set; get; } = null!;

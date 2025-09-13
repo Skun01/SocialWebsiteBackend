@@ -9,4 +9,5 @@ public interface IUserRepository : IGenericRepository<User>
     Task<bool> IsUserNameExistAsync(string userName);
     Task<User?> GetByEmailAsync(string email);
     Task UpdateVerifyEmailByIdAsync(Guid userId, bool IsEmailVerified);
+    Task<bool> IsUserExistAsync(Guid userId);
 }

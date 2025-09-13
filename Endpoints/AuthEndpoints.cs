@@ -10,7 +10,7 @@ namespace SocialWebsite.Endpoints;
 
 public static class AuthEndpoints
 {
-    public static RouteGroupBuilder MapAuthEndpoints(this WebApplication app, string routePrefix)
+    public static RouteGroupBuilder MapAuthEndpoints(this RouteGroupBuilder app, string routePrefix)
     {
         var group = app.MapGroup(routePrefix)
             .WithTags("Authentication");

@@ -74,4 +74,9 @@ public class UserRepository : IUserRepository
         user.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
     }
+
+    public async Task<bool> IsUserExistAsync(Guid userId)
+    {
+        return await _context.Users.AnyAsync(u => u.Id == userId);
+    }
 }

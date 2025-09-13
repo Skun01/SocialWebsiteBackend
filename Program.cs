@@ -33,6 +33,7 @@ builder.Services.AddDbContext<SocialWebsiteContext>(options => options.UseSqlSer
 // Repository Register
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+builder.Services.AddScoped<IPostRepository, PostRepository>();
 
 
 // Register all valiators for DTOs
@@ -41,10 +42,11 @@ builder.Services.AddValidatorsFromAssembly(typeof(Program).Assembly);
 // Endpoint services register
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IPostService, PostService>();
+// Support services
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IFileService, LocalFileService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
-
 // Password hasher
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
@@ -123,6 +125,8 @@ if (app.Environment.IsDevelopment())
 }
 
 //ENDPOINT
-app.MapUserEndpoints("/users");
-app.MapAuthEndpoints("/auth");
+var version1 = app.MapGroup("v1");
+version1.MapUserEndpoints("/users");
+version1.MapAuthEndpoints("/auth");
+version1.MapPostEndpoints("/posts");
 app.Run();

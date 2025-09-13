@@ -105,11 +105,11 @@ public class UserService : IUserService
                 return Result.Failure<string>(new Error("UploadAvatar.UserNotFound", "User not found!"));
             
             List<string> validExtentions = [".jpg", ".png"];
-            string filePath = await _fileService.UploadFileAsync(file, validExtentions, "images");
-            user.ProfilePictureUrl = filePath;
+            var uploadedFile = await _fileService.UploadFileAsync(file, validExtentions, "images");
+            user.ProfilePictureUrl = uploadedFile.StorageKey;
             await _userRepo.UpdateAsync(user);
             
-            return Result.Success(filePath);
+            return Result.Success(uploadedFile.StorageKey);
         }
         catch (ArgumentException ex)
         {

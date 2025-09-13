@@ -13,8 +13,6 @@ public class Comment
     public string Content { set; get; } = string.Empty;
     public DateTime CreatedAt { set; get; } = DateTime.UtcNow;
     public DateTime UpdatedAt { set; get; } = DateTime.UtcNow;
-    public bool IsDeleted { set; get; } = false;
-
     public virtual Post Post { set; get; } = null!;
     public virtual User User { set; get; } = null!;
     public virtual Comment? ParentComment { set; get; }

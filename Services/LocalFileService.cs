@@ -1,5 +1,6 @@
 using System;
 using Serilog;
+using SocialWebsite.Entities;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Shared;
 
@@ -20,24 +21,44 @@ public class LocalFileService(IWebHostEnvironment webHostEnvironment) : IFileSer
         }
     }
 
-    public async Task<string> UploadFileAsync(IFormFile file, List<string> validExtentions, string folderName)
+    public async Task<FileAsset> UploadFileAsync(
+        IFormFile file,
+        List<string> validExtensions,
+        string folderName)
     {
-        var fileExtention = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!validExtentions.Contains(fileExtention))
-            throw new ArgumentException("File type is not valid in ({string.Join(',', validExtentions)})");
+        if (file == null || file.Length == 0)
+            throw new ArgumentException("File is empty.");
 
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!validExtensions.Contains(extension))
+            throw new ArgumentException(
+                $"File type is not valid. Allowed: {string.Join(',', validExtensions)}");
+
+        // root folder
         var contentPath = webHostEnvironment.ContentRootPath;
-        var path = Path.Combine(contentPath, "wwwroot/images");
-        if (!Directory.Exists(path))
-            Directory.CreateDirectory(path);
+        var uploadPath = Path.Combine(contentPath, "wwwroot", folderName);
+        if (!Directory.Exists(uploadPath))
+            Directory.CreateDirectory(uploadPath);
 
-        var newFileName = $"{Guid.NewGuid()}{fileExtention}";
-        var filePath = Path.Combine(path, newFileName);
+        // create new file name
+        var newFileName = $"{Guid.NewGuid()}{extension}";
+        var filePath = Path.Combine(uploadPath, newFileName);
+
         using (var stream = new FileStream(filePath, FileMode.Create))
         {
             await file.CopyToAsync(stream);
         }
-        string imagePath = $"/{folderName}/{newFileName}";
-        return imagePath;
+
+        var fileAsset = new FileAsset
+        {
+            Id = Guid.NewGuid(),
+            StorageKey = Path.Combine(folderName, newFileName).Replace("\\", "/"),
+            MimeType = file.ContentType,
+            FileSizeBytes = file.Length,
+            OriginalFileName = file.FileName,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        return fileAsset;
     }
 }

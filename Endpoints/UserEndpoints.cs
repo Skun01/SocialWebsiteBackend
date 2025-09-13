@@ -8,7 +8,7 @@ namespace SocialWebsite.Endpoints;
 
 public static class UserEndpoints
 {
-    public static RouteGroupBuilder MapUserEndpoints(this WebApplication app, string routePrefix)
+    public static RouteGroupBuilder MapUserEndpoints(this RouteGroupBuilder app, string routePrefix)
     {
         var group = app.MapGroup(routePrefix)
             .WithTags("Users");
