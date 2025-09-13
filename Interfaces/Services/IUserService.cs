@@ -12,4 +12,5 @@ public interface IUserService
     Task<Result<UserResponse>> CreateUserAsync(CreateUserRequest request);
     Task<Result> UpdateUserAsync(Guid id, UpdateUserRequest request);
     Task<Result> DeleteUserAsync(Guid id);
+    Task<Result<string>> UploadUserAvatarAsync(Guid userId, IFormFile file);
 }

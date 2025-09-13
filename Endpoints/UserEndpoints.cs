@@ -66,8 +66,18 @@ public static class UserEndpoints
         group.MapDelete("/{id:guid}", async (Guid id, IUserService userService) =>
         {
             var result = await userService.DeleteUserAsync(id);
-            return result.IsSuccess ? Results.NoContent() : Results.NotFound(result.Error);
+            return result.IsSuccess
+                ? Results.NoContent() 
+                : Results.NotFound(result.Error);
         });
+
+        group.MapPost("/users/{userId:guid}/avatar", async (Guid userId, IFormFile file, IUserService userService) =>
+        {
+            var result = await userService.UploadUserAvatarAsync(userId, file);
+            return result.IsSuccess
+                ? Results.Ok(new { url = result.Value })
+                : Results.BadRequest(result.Error);
+        }).DisableAntiforgery();
 
         return group;
     }

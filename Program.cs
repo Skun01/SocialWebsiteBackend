@@ -6,7 +6,6 @@ using SocialWebsite.Data;
 using SocialWebsite.Extensions;
 using SocialWebsite.Shared.Exceptions;
 using FluentValidation;
-using FluentValidation.AspNetCore;
 using SocialWebsite.Interfaces.Repositories;
 using SocialWebsite.Data.Repositories;
 using SocialWebsite.Interfaces.Services;
@@ -126,5 +125,4 @@ if (app.Environment.IsDevelopment())
 //ENDPOINT
 app.MapUserEndpoints("/users");
 app.MapAuthEndpoints("/auth");
-app.MapFileEndpoints("/files");
 app.Run();

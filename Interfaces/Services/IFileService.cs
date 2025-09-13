@@ -5,6 +5,6 @@ namespace SocialWebsite.Interfaces.Services;
 
 public interface IFileService
 {
-    Task<Result<string>> UploadImageAsync(IFormFile file);
-    void DeleteImage(string imageUrl);
+    void DeleteFile(string imageUrl);
+    Task<string> UploadFileAsync(IFormFile file, List<string> validExtentions, string folderName);
 }
