@@ -6,6 +6,5 @@ namespace SocialWebsite.DTOs.Post;
 public record class PostFileResponse(
     string Url,
     long FileSizeBytes,
-    string MimeType,
-    int SortOrder
+    string MimeType
 );

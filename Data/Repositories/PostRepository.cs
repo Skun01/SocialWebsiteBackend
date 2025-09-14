@@ -37,6 +37,8 @@ public class PostRepository : IPostRepository
             .Include(p => p.User)
             .Include(p => p.Likes)
             .Include(p => p.Comments)
+            .AsSplitQuery()
+            .AsNoTracking()
             .ToListAsync();
     }
 

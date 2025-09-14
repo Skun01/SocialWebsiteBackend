@@ -12,6 +12,8 @@ public class SocialWebsiteContext : DbContext
     public DbSet<Post> Posts { set; get; }
     public DbSet<Friendship> Friendships { set; get; }
     public DbSet<PasswordResetToken> PasswordResetTokens { set; get; }
+    public DbSet<FileAsset> FileAssets { set; get; }
+    public DbSet<PostFile> PostFiles { set; get; }
     public SocialWebsiteContext(DbContextOptions<SocialWebsiteContext> options) : base(options) { }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -92,6 +94,15 @@ public class SocialWebsiteContext : DbContext
             friendshipEntity
                 .HasIndex(f => new { f.SenderId, f.ReceiverId })
                 .IsUnique();
+        });
+
+        modelBuilder.Entity<PostFile>(entity =>
+        {
+            entity
+                .HasOne(pf => pf.FileAsset)
+                .WithOne(fa => fa.PostFile)
+                .HasForeignKey<PostFile>(pf => pf.FileAssetId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
     }

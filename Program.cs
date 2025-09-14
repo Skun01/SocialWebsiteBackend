@@ -34,6 +34,7 @@ builder.Services.AddDbContext<SocialWebsiteContext>(options => options.UseSqlSer
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
+builder.Services.AddScoped<IPostFileRepository, PostFileRepository>();
 
 
 // Register all valiators for DTOs

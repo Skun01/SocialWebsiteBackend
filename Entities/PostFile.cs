@@ -11,7 +11,6 @@ public class PostFile
     public Guid PostId { set; get; }
     public Guid FileAssetId { set; get; }
     public DateTime CreatedAt { set; get; } = DateTime.UtcNow;
-    public int SortOrder { set; get; } = 0;
     [ForeignKey(nameof(PostId))]
     public virtual Post Post { set; get; } = null!;
     [ForeignKey(nameof(FileAssetId))]

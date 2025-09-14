@@ -11,8 +11,7 @@ public static class FileAssetMapping
         return new(
             Url: baseUrl + postFile.FileAsset.StorageKey,
             FileSizeBytes: postFile.FileAsset.FileSizeBytes,
-            MimeType: postFile.FileAsset.MimeType,
-            SortOrder: postFile.SortOrder
+            MimeType: postFile.FileAsset.MimeType
         );
     }
 }

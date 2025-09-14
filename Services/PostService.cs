@@ -13,14 +13,16 @@ public class PostService : IPostService
     private readonly IPostRepository _postRepo;
     private readonly IUserRepository _userRepo;
     private string _fileUploadBaseUrl;
+    private readonly IPostFileRepository _postFileRepo;
     private readonly IFileService _fileService;
     public PostService(IPostRepository postRepository, IConfiguration configuration,
-        IUserRepository userRepository, IFileService fileService)
+        IUserRepository userRepository, IFileService fileService, IPostFileRepository postFileRepository)
     {
         _postRepo = postRepository;
         _fileUploadBaseUrl = configuration["FileUploadServer:BaseUrl"]!;
         _userRepo = userRepository;
         _fileService = fileService;
+        _postFileRepo = postFileRepository;
     }
 
     public async Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest request)
@@ -33,9 +35,14 @@ public class PostService : IPostService
         return Result.Success(newPost.ToResponse(_fileUploadBaseUrl));
     }
 
-    public Task<Result> DeletePostAsync(Guid postId)
+    public async Task<Result> DeletePostAsync(Guid postId)
     {
-        throw new NotImplementedException();
+        Post? post = await _postRepo.GetByIdAsync(postId);
+        if (post is null)
+            return Result.Failure<PostResponse>(new Error("Post.NotFound", "Post not found"));
+
+        await _postRepo.DeleteAsync(post);
+        return Result.Success();
     }
 
     public async Task<Result<IEnumerable<PostResponse>>> GetAllPostAsync()
@@ -81,4 +88,36 @@ public class PostService : IPostService
         return Result.Success(post.ToResponse(_fileUploadBaseUrl));
     }
 
+    public async Task<Result<IEnumerable<PostFileResponse>>> AddPostFileAsync(Guid postId, IFormFileCollection files)
+    {
+        Post? post = await _postRepo.GetByIdAsync(postId);
+        if (post is null)
+            return Result.Failure<IEnumerable<PostFileResponse>>(new Error("Post.NotFound", "Post not found"));
+
+        List<string> ValidExtentions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+        List<PostFile> postFiles = [];
+        foreach (var file in files)
+        {
+            FileAsset fileAsset = await _fileService.UploadFileAsync(file, ValidExtentions, "PostAsset");
+            PostFile newPostFile = new()
+            {
+                Id = Guid.NewGuid(),
+                PostId = postId,
+                FileAsset = fileAsset
+            };
+            postFiles.Add(newPostFile);
+        }
+        await _postFileRepo.AddRangeAsync(postFiles);
+        return Result.Success(postFiles.Select(pf => pf.ToResponse(_fileUploadBaseUrl)));
+    }
+
+    public async Task<Result> DeletePostFileAsync(Guid postId, Guid postFileId)
+    {
+        PostFile? postFile = await _postFileRepo.GetByIdAsync(postFileId);
+        if (postFile is null)
+            return Result.Failure(new Error("PostFile.NotFound", "Post file not found"));
+
+        await _postFileRepo.DeleteAsync(postFile);
+        return Result.Success();
+    }
 }
