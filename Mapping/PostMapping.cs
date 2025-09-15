@@ -6,7 +6,7 @@ namespace SocialWebsite.Mapping;
 
 public static class PostMapping
 {
-    public static PostResponse ToResponse(this Post post, string baseUrl)
+    public static PostResponse ToResponse(this Post post, string baseUrl, int likeCount, bool isLikeByMe)
     {
         return new PostResponse(
             Id: post.Id,
@@ -15,9 +15,10 @@ public static class PostMapping
             AuthorAvatar: baseUrl + post.User.ProfilePictureUrl ?? "",
             Content: post.Content,
             Privacy: post.Privacy,
-            LikeCount: post.Likes.Count,
+            LikeCount: likeCount,
+            IsLikedByMe: isLikeByMe,
             CommentCount: post.Comments.Count,
-            Files: [.. post.Files.Select(f => f.ToResponse(baseUrl))],
+            Files: post.Files.Select(pf => pf.ToResponse(baseUrl)).ToList(),
             CreatedAt: post.CreatedAt,
             UpdatedAt: post.UpdatedAt
         );

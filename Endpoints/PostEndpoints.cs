@@ -15,11 +15,15 @@ public static class PostEndpoints
         var group = app.MapGroup(routePrefix)
             .WithTags("Post");
 
-        group.MapGet("/", async (IPostService postService) =>
+        group.MapGet("/", async (IPostService postService, HttpContext context) =>
         {
-            var result = await postService.GetAllPostAsync();
+            var currentUserId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (currentUserId is null)
+                return Results.BadRequest("Validate token is invalid");
+
+            var result = await postService.GetAllPostAsync(Guid.Parse(currentUserId));
             return Results.Ok(result.Value);
-        });
+        }).RequireAuthorization();
 
         group.MapPost("/", async ([FromBody] CreatePostRequest request, IPostService postService) =>
         {
@@ -29,9 +33,13 @@ public static class PostEndpoints
                 : Results.BadRequest(result.Error);
         });
 
-        group.MapGet("/{postId:guid}", async (Guid postId, IPostService postService) =>
+        group.MapGet("/{postId:guid}", async (Guid postId, IPostService postService, HttpContext context) =>
         {
-            var result = await postService.GetPostByIdAsync(postId);
+            var currentUserId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (currentUserId is null)
+                return Results.BadRequest("Validate token is invalid");
+
+            var result = await postService.GetPostByIdAsync(postId, Guid.Parse(currentUserId));
             return result.IsSuccess
                 ? Results.Ok(result.Value)
                 : Results.BadRequest(result.Error);
@@ -55,30 +63,49 @@ public static class PostEndpoints
         });
 
         group.MapPut("/{postId:guid}", async ([FromRoute] Guid postId,
-            UpdatePostRequest request, IPostService postService) =>
+            UpdatePostRequest request, IPostService postService, HttpContext context) =>
         {
-            var result = await postService.UpdatePostAsync(postId, request);
+            var currentUserId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (currentUserId is null)
+                return Results.BadRequest("Validate token is invalid");
+                
+            var result = await postService.UpdatePostAsync(postId, request, Guid.Parse(currentUserId));
             return result.IsSuccess
                 ? Results.Ok(result.Value)
                 : Results.BadRequest(result.Error);
         });
 
+        group.MapPost("/{postId:guid}/files", async ([FromRoute] Guid postId, [FromForm] IFormFileCollection files, IPostService postService) =>
+        {
+            var result = await postService.AddPostFileAsync(postId, files);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.BadRequest(result.Error);
+        }).DisableAntiforgery();
 
-        // group.MapPost("/{postId:guid}/likes", async (Guid postId, IPostService postService, HttpContext context) =>
-        // {
-        //     var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        //     var result = await postService.LikePostAsync(postId, userId);
-        //     return result.IsSuccess ? Results.Ok(result.Value)
-        //                             : Results.BadRequest(result.Error);
-        // });
+        group.MapDelete("/{postId:guid}/files/{postFileId:guid}", async (Guid postId, Guid postFileId, IPostService postService) =>
+        {
+            var result = await postService.DeletePostFileAsync(postId, postFileId);
+            return result.IsSuccess
+                ? Results.NoContent()
+                : Results.BadRequest(result.Error);
+        });
 
-        // group.MapDelete("/{postId:guid}/likes", async (Guid postId, IPostService postService, HttpContext ctx) =>
-        // {
-        //     var userId = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier);
-        //     var result = await postService.UnlikePostAsync(postId, userId);
-        //     return result.IsSuccess ? Results.Ok(result.Value)
-        //                             : Results.BadRequest(result.Error);
-        // });
+        group.MapPost("/{postId:guid}/likes", async (Guid postId, IPostService postService, HttpContext context) =>
+        {
+            var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await postService.LikePostAsync(postId, Guid.Parse(userId!));
+            return result.IsSuccess ? Results.NoContent()
+                                    : Results.BadRequest(result.Error);
+        }).RequireAuthorization();
+
+        group.MapDelete("/{postId:guid}/likes", async (Guid postId, IPostService postService, HttpContext ctx) =>
+        {
+            var userId = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await postService.UnlikePostAsync(postId, Guid.Parse(userId!));
+            return result.IsSuccess ? Results.NoContent()
+                                    : Results.BadRequest(result.Error);
+        }).RequireAuthorization();
 
 
         return group;

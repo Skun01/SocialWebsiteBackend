@@ -5,6 +5,7 @@ using SocialWebsite.Interfaces.Repositories;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Mapping;
 using SocialWebsite.Shared;
+using SocialWebsite.Shared.Enums;
 
 namespace SocialWebsite.Services;
 
@@ -15,14 +16,17 @@ public class PostService : IPostService
     private string _fileUploadBaseUrl;
     private readonly IPostFileRepository _postFileRepo;
     private readonly IFileService _fileService;
+    private readonly ILikeRepository _likeRepo;
     public PostService(IPostRepository postRepository, IConfiguration configuration,
-        IUserRepository userRepository, IFileService fileService, IPostFileRepository postFileRepository)
+        IUserRepository userRepository, IFileService fileService, IPostFileRepository postFileRepository,
+        ILikeRepository likeRepository)
     {
         _postRepo = postRepository;
         _fileUploadBaseUrl = configuration["FileUploadServer:BaseUrl"]!;
         _userRepo = userRepository;
         _fileService = fileService;
         _postFileRepo = postFileRepository;
+        _likeRepo = likeRepository;
     }
 
     public async Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest request)
@@ -32,7 +36,13 @@ public class PostService : IPostService
             return Result.Failure<PostResponse>(new Error("CreatePost.UserNotFount", "User not found"));
 
         Post newPost = await _postRepo.AddAsync(request.ToEntity());
-        return Result.Success(newPost.ToResponse(_fileUploadBaseUrl));
+        return Result.Success(
+            newPost.ToResponse(
+                _fileUploadBaseUrl,
+                0,
+                false
+            )
+        );
     }
 
     public async Task<Result> DeletePostAsync(Guid postId)
@@ -45,25 +55,25 @@ public class PostService : IPostService
         return Result.Success();
     }
 
-    public async Task<Result<IEnumerable<PostResponse>>> GetAllPostAsync()
+    public async Task<Result<IEnumerable<PostResponse>>> GetAllPostAsync(Guid currentUserId)
     {
-        IEnumerable<PostResponse> posts = (await _postRepo.GetAllAsync())
-            .Select(p => p.ToResponse(_fileUploadBaseUrl));
+        IEnumerable<PostResponse> posts = await _postRepo.GetAllResponseAsync(_fileUploadBaseUrl, currentUserId);
         return Result.Success(posts);
     }
 
-    public async Task<Result<PostResponse>> GetPostByIdAsync(Guid postId)
+    public async Task<Result<PostResponse>> GetPostByIdAsync(Guid postId, Guid currentUserId)
     {
         Post? post = await _postRepo.GetByIdAsync(postId);
         if (post is null)
             return Result.Failure<PostResponse>(new Error("Post.NotFound", "Post not found"));
 
-        return Result.Success(post.ToResponse(_fileUploadBaseUrl));
-    }
-
-    public Task<Result<PostResponse>> EditPostAsync(EditPostRequest request)
-    {
-        throw new NotImplementedException();
+        return Result.Success(
+            post.ToResponse(
+                _fileUploadBaseUrl,
+                await _likeRepo.GetTargetLikeNumber(postId, LikeType.Post),
+                await _likeRepo.IsUserLiked(currentUserId, postId, LikeType.Post)
+            )
+        );
     }
 
     public async Task<Result> UpdatePostPrivacyAsync(Guid postId, ChangePostPrivacyRequest request)
@@ -76,7 +86,7 @@ public class PostService : IPostService
         return Result.Success();
     }
 
-    public async Task<Result<PostResponse>> UpdatePostAsync(Guid postId, UpdatePostRequest request)
+    public async Task<Result<PostResponse>> UpdatePostAsync(Guid postId, UpdatePostRequest request, Guid currentUserId)
     {
         Post? post = await _postRepo.GetByIdAsync(postId);
         if (post is null)
@@ -85,7 +95,13 @@ public class PostService : IPostService
         post.Content = request.Content;
         post.Privacy = request.Privacy;
         await _postRepo.UpdateAsync(post);
-        return Result.Success(post.ToResponse(_fileUploadBaseUrl));
+        return Result.Success(
+            post.ToResponse(
+                _fileUploadBaseUrl,
+                await _likeRepo.GetTargetLikeNumber(postId, LikeType.Post),
+                await _likeRepo.IsUserLiked(currentUserId, postId, LikeType.Post)
+            )
+        );
     }
 
     public async Task<Result<IEnumerable<PostFileResponse>>> AddPostFileAsync(Guid postId, IFormFileCollection files)
@@ -118,6 +134,17 @@ public class PostService : IPostService
             return Result.Failure(new Error("PostFile.NotFound", "Post file not found"));
 
         await _postFileRepo.DeleteAsync(postFile);
+        _fileService.DeleteFile(postFile.FileAsset.StorageKey);
         return Result.Success();
+    }
+
+    public Task<Result> LikePostAsync(Guid postId, Guid currentUserId)
+    {
+        throw new NotImplementedException();
+    }
+
+    public Task<Result> UnlikePostAsync(Guid postId, Guid currentUserId)
+    {
+        throw new NotImplementedException();
     }
 }

@@ -35,19 +35,43 @@ public class PostRepository : IPostRepository
     {
         return await _context.Posts
             .Include(p => p.User)
-            .Include(p => p.Likes)
             .Include(p => p.Comments)
+            .Include(p => p.Files)
+                .ThenInclude(pf => pf.FileAsset)
             .AsSplitQuery()
             .AsNoTracking()
             .ToListAsync();
+    }
+
+    public async Task<IEnumerable<PostResponse>> GetAllResponseAsync(string baseUrl, Guid currentUserId)
+    {
+        return await _context.Posts
+        .AsNoTracking()
+        .OrderByDescending(p => p.CreatedAt)
+        .Select(p => new PostResponse(
+            p.Id,
+            p.User.Id,
+            p.User.Username,
+            p.User.ProfilePictureUrl ?? "",
+            p.Content,
+            p.Privacy,
+            _context.Likes.Count(l => l.Type == LikeType.Post && l.TargetId == p.Id),
+            _context.Likes.Any(l => l.Type == LikeType.Post && l.TargetId == p.Id && l.UserId == currentUserId),
+            p.Comments.Count,
+            p.Files.Select(f => f.ToResponse(baseUrl)).ToList(),
+            p.CreatedAt,
+            p.UpdatedAt
+        ))
+        .ToListAsync();
     }
 
     public async Task<Post?> GetByIdAsync(Guid id)
     {
         return await _context.Posts
             .Include(p => p.User)
-            .Include(p => p.Likes)
             .Include(p => p.Comments)
+            .Include(p => p.Files)
+                .ThenInclude(pf => pf.FileAsset)
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == id);
     }

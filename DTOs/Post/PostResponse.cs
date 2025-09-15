@@ -11,6 +11,7 @@ public record class PostResponse(
     string Content,
     PostPrivacy Privacy,
     int LikeCount,
+    bool IsLikedByMe,
     int CommentCount,
     List<PostFileResponse> Files,
     DateTime CreatedAt,

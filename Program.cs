@@ -35,6 +35,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
 builder.Services.AddScoped<IPostRepository, PostRepository>();
 builder.Services.AddScoped<IPostFileRepository, PostFileRepository>();
+builder.Services.AddScoped<ILikeRepository, LikeRepository>();
 
 
 // Register all valiators for DTOs
