@@ -13,13 +13,13 @@ public class LikeRepository : ILikeRepository
     {
         _context = context;
     }
-    public async Task<Like> CreateLikeAsync(Guid userId, Guid TargetId, LikeType type)
+    public async Task<Like> CreateLikeAsync(Guid userId, Guid targetId, LikeType type)
     {
         Like newLike = new()
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            TargetId = TargetId,
+            TargetId = targetId,
             Type = type
         };
         _context.Likes.Add(newLike);
@@ -27,9 +27,9 @@ public class LikeRepository : ILikeRepository
         return newLike;
     }
 
-    public async Task DeleteLikeAsync(Guid likeId)
+    public async Task DeleteLikeAsync(Guid userId, Guid targetId, LikeType type)
     {
-        Like? target = await _context.Likes.FindAsync(likeId);
+        Like? target = await _context.Likes.FirstOrDefaultAsync(l => l.UserId == userId && l.TargetId == targetId && l.Type == type);
         _context.Likes.Remove(target!);
         await _context.SaveChangesAsync();
     }

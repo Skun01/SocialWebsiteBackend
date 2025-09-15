@@ -63,6 +63,10 @@ public class PostService : IPostService
 
     public async Task<Result<PostResponse>> GetPostByIdAsync(Guid postId, Guid currentUserId)
     {
+        User? user = await _userRepo.GetByIdAsync(currentUserId);
+        if (user is null)
+            return Result.Failure<PostResponse>(new Error("CreatePost.UserNotFount", "User not found"));
+
         Post? post = await _postRepo.GetByIdAsync(postId);
         if (post is null)
             return Result.Failure<PostResponse>(new Error("Post.NotFound", "Post not found"));
@@ -88,6 +92,10 @@ public class PostService : IPostService
 
     public async Task<Result<PostResponse>> UpdatePostAsync(Guid postId, UpdatePostRequest request, Guid currentUserId)
     {
+        User? user = await _userRepo.GetByIdAsync(currentUserId);
+        if (user is null)
+            return Result.Failure<PostResponse>(new Error("CreatePost.UserNotFount", "User not found"));
+
         Post? post = await _postRepo.GetByIdAsync(postId);
         if (post is null)
             return Result.Failure<PostResponse>(new Error("Post.NotFound", "Post not found"));
@@ -138,13 +146,31 @@ public class PostService : IPostService
         return Result.Success();
     }
 
-    public Task<Result> LikePostAsync(Guid postId, Guid currentUserId)
+    public async Task<Result> LikePostAsync(Guid postId, Guid currentUserId)
     {
-        throw new NotImplementedException();
+        User? user = await _userRepo.GetByIdAsync(currentUserId);
+        if (user is null)
+            return Result.Failure(new Error("CreatePost.UserNotFount", "User not found"));
+
+        bool isUserLiked = await _likeRepo.IsUserLiked(currentUserId, postId, LikeType.Post);
+        if (isUserLiked)
+            return Result.Failure(new Error("UserLikePost", "User has liked this post"));
+
+        await _likeRepo.CreateLikeAsync(currentUserId, postId, LikeType.Post);
+        return Result.Success();
     }
 
-    public Task<Result> UnlikePostAsync(Guid postId, Guid currentUserId)
+    public async Task<Result> UnlikePostAsync(Guid postId, Guid currentUserId)
     {
-        throw new NotImplementedException();
+        User? user = await _userRepo.GetByIdAsync(currentUserId);
+        if (user is null)
+            return Result.Failure(new Error("CreatePost.UserNotFount", "User not found"));
+
+        bool isUserLiked = await _likeRepo.IsUserLiked(currentUserId, postId, LikeType.Post);
+        if (!isUserLiked)
+            return Result.Failure(new Error("UserUnLikePost", "User still haven't like this post"));
+
+        await _likeRepo.DeleteLikeAsync(currentUserId, postId, LikeType.Post);
+        return Result.Success();
     }
 }
