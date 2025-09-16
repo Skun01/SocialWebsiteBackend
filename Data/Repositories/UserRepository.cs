@@ -1,7 +1,10 @@
 using System;
 using Microsoft.EntityFrameworkCore;
+using SocialWebsite.DTOs.User;
 using SocialWebsite.Entities;
 using SocialWebsite.Interfaces.Repositories;
+using SocialWebsite.Mapping;
+using SocialWebsite.Shared;
 
 namespace SocialWebsite.Data.Repositories;
 
@@ -78,5 +81,33 @@ public class UserRepository : IUserRepository
     public async Task<bool> IsUserExistAsync(Guid userId)
     {
         return await _context.Users.AnyAsync(u => u.Id == userId);
+    }
+
+    public async Task<PageList<UserResponse>> SearchAsync(UserQueryParameters query, Guid? currentUserId)
+    {
+        IQueryable<User> searchQuery = _context.Users.AsQueryable();
+        if (!string.IsNullOrEmpty(query.Name))
+            searchQuery = searchQuery.Where(p => p.Username.Contains(query.Name));
+
+        if (!string.IsNullOrEmpty(query.SortBy))
+        {
+            searchQuery = query.SortBy.ToLower() switch
+            {
+                "name" => searchQuery.OrderBy(u => u.Username),
+                _ => throw new ArgumentException("Value in sortBy does not valid!")
+            };
+        }
+
+        List<User> users = await searchQuery
+            .AsNoTracking()
+            .ToListAsync();
+
+        List<UserResponse> response = users
+            .Skip((query.PageNumer - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(u => u.ToResponse())
+            .ToList();
+
+        return new PageList<UserResponse>(response, users.Count, query.PageNumer, query.PageSize);
     }
 }

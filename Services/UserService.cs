@@ -64,6 +64,20 @@ public class UserService : IUserService
         return Result.Success(userTarget.ToResponse());
     }
 
+    public async Task<Result<PageList<UserResponse>>> SearchUserAsync(UserQueryParameters query, Guid? currentUserId)
+    {
+        try
+        {
+            var searchResults = await _userRepo.SearchAsync(query, currentUserId);
+            return Result.Success(searchResults);
+        }
+        catch (Exception ex)
+        {
+            return Result.Failure<PageList<UserResponse>>(new Error("Search.Error", ex.Message));
+        }
+        
+    }
+
     public async Task<Result> UpdateUserAsync(Guid id, UpdateUserRequest request)
     {
         User? userTarget = await _userRepo.GetByIdAsync(id);

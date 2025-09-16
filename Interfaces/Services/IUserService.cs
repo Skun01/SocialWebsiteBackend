@@ -13,4 +13,5 @@ public interface IUserService
     Task<Result> UpdateUserAsync(Guid id, UpdateUserRequest request);
     Task<Result> DeleteUserAsync(Guid id);
     Task<Result<string>> UploadUserAvatarAsync(Guid userId, IFormFile file);
+    Task<Result<PageList<UserResponse>>> SearchUserAsync(UserQueryParameters query, Guid? currentUserId);
 }

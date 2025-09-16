@@ -1,5 +1,7 @@
 using System;
+using SocialWebsite.DTOs.User;
 using SocialWebsite.Entities;
+using SocialWebsite.Shared;
 
 namespace SocialWebsite.Interfaces.Repositories;
 
@@ -10,4 +12,5 @@ public interface IUserRepository : IGenericRepository<User>
     Task<User?> GetByEmailAsync(string email);
     Task UpdateVerifyEmailByIdAsync(Guid userId, bool IsEmailVerified);
     Task<bool> IsUserExistAsync(Guid userId);
+    Task<PageList<UserResponse>> SearchAsync(UserQueryParameters query, Guid? currentUserId);
 }
