@@ -85,29 +85,31 @@ public class UserRepository : IUserRepository
 
     public async Task<PageList<UserResponse>> SearchAsync(UserQueryParameters query, Guid? currentUserId)
     {
-        IQueryable<User> searchQuery = _context.Users.AsQueryable();
-        if (!string.IsNullOrEmpty(query.Name))
-            searchQuery = searchQuery.Where(p => p.Username.Contains(query.Name));
+        var baseQuery = _context.Users
+            .AsNoTracking();
 
-        if (!string.IsNullOrEmpty(query.SortBy))
+        if (!string.IsNullOrWhiteSpace(query.Name))
         {
-            searchQuery = query.SortBy.ToLower() switch
-            {
-                "name" => searchQuery.OrderBy(u => u.Username),
-                _ => throw new ArgumentException("Value in sortBy does not valid!")
-            };
+            baseQuery = baseQuery.Where(u =>
+                u.Username.Contains(query.Name)
+            );
         }
 
-        List<User> users = await searchQuery
-            .AsNoTracking()
+         baseQuery = (query.SortBy?.ToLowerInvariant()) switch
+        {
+            "name" => baseQuery.OrderBy(u => u.Username).ThenBy(u => u.Id),
+            "recent" => baseQuery.OrderByDescending(u => u.Id),
+            _ => baseQuery.OrderBy(u => u.Username).ThenBy(u => u.Id)
+        };
+
+        var total = await baseQuery.CountAsync();
+
+         var items = await baseQuery
+            .Skip((Math.Max(1, query.PageNumber) - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .Select(u => u.ToResponse())   
             .ToListAsync();
 
-        List<UserResponse> response = users
-            .Skip((query.PageNumer - 1) * query.PageSize)
-            .Take(query.PageSize)
-            .Select(u => u.ToResponse())
-            .ToList();
-
-        return new PageList<UserResponse>(response, users.Count, query.PageNumer, query.PageSize);
+        return new PageList<UserResponse>(items, total, Math.Max(1, query.PageNumber), query.PageSize);
     }
 }
