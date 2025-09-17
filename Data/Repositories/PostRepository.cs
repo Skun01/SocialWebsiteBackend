@@ -4,6 +4,7 @@ using SocialWebsite.DTOs.Post;
 using SocialWebsite.Entities;
 using SocialWebsite.Interfaces.Repositories;
 using SocialWebsite.Mapping;
+using SocialWebsite.Shared;
 using SocialWebsite.Shared.Enums;
 
 namespace SocialWebsite.Data.Repositories;
@@ -43,11 +44,26 @@ public class PostRepository : IPostRepository
             .ToListAsync();
     }
 
-    public async Task<IEnumerable<PostResponse>> GetAllResponseAsync(string baseUrl, Guid currentUserId)
+    public async Task<CursorList<PostResponse>> GetPostsResponseAsync(PostQueryParameters query, string baseUrl)
     {
-        return await _context.Posts
-        .AsNoTracking()
-        .OrderByDescending(p => p.CreatedAt)
+        var baseQuery = _context.Posts.AsNoTracking();
+
+        baseQuery = baseQuery
+            .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id);
+
+        var decodedCursor = CursorHelper.DecodeCursor(query.Cursor);
+        if (decodedCursor.HasValue)
+        {
+            var (cursorCreatedAt, cursorId) = decodedCursor.Value;
+            baseQuery = baseQuery.Where(p =>
+                p.CreatedAt < cursorCreatedAt ||
+                (p.CreatedAt == cursorCreatedAt && p.Id.CompareTo(cursorId) < 0)
+            );
+        }
+
+        var posts = await baseQuery
+        .Take(query.PageSize + 1)
         .Select(p => new PostResponse(
             p.Id,
             p.User.Id,
@@ -56,13 +72,25 @@ public class PostRepository : IPostRepository
             p.Content,
             p.Privacy,
             _context.Likes.Count(l => l.Type == LikeType.Post && l.TargetId == p.Id),
-            _context.Likes.Any(l => l.Type == LikeType.Post && l.TargetId == p.Id && l.UserId == currentUserId),
+            _context.Likes.Any(l => l.Type == LikeType.Post && l.TargetId == p.Id),
             p.Comments.Count,
             p.Files.Select(f => f.ToResponse(baseUrl)).ToList(),
             p.CreatedAt,
             p.UpdatedAt
         ))
         .ToListAsync();
+
+        bool hasNextPage = posts.Count > query.PageSize;
+        string? nextCursor = null;
+        if (hasNextPage)
+        {
+            posts.RemoveAt(query.PageSize);
+            var lastItem = posts.Last();
+            if(lastItem != null)
+                nextCursor = CursorHelper.EncodeCursor(lastItem.CreatedAt, lastItem.Id);
+        }
+
+        return new CursorList<PostResponse>(posts, nextCursor, hasNextPage);
     }
 
     public async Task<Post?> GetByIdAsync(Guid id)

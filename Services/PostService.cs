@@ -55,9 +55,9 @@ public class PostService : IPostService
         return Result.Success();
     }
 
-    public async Task<Result<IEnumerable<PostResponse>>> GetAllPostAsync(Guid currentUserId)
+    public async Task<Result<CursorList<PostResponse>>> GetPostsAsync(PostQueryParameters query)
     {
-        IEnumerable<PostResponse> posts = await _postRepo.GetAllResponseAsync(_fileUploadBaseUrl, currentUserId);
+        CursorList<PostResponse> posts = await _postRepo.GetPostsResponseAsync(query, _fileUploadBaseUrl);
         return Result.Success(posts);
     }
 
