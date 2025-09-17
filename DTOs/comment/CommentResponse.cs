@@ -1,6 +1,7 @@
 namespace SocialWebsite.DTOs.comment;
 
 public record class CommentResponse(
+    Guid Id,
     Guid PostId,
     Guid UserId,
     Guid? ParentCommentId,
