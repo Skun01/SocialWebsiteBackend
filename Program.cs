@@ -131,4 +131,5 @@ var version1 = app.MapGroup("v1");
 version1.MapUserEndpoints("/users");
 version1.MapAuthEndpoints("/auth");
 version1.MapPostEndpoints("/posts");
+version1.MapCommentEndpoints("/posts/{postId:guid}/comments");
 app.Run();
