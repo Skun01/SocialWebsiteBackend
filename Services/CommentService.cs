@@ -19,7 +19,7 @@ public class CommentService : ICommentService
         _postRepo = postRepository;
     }
 
-    public async Task<Result<CommentResponse>> CreateNewCommentAsync(Guid postId, CreateCommentRequest request)
+    public async Task<Result<CommentResponse>> CreateNewCommentAsync(Guid postId, Guid currentUserId, CreateCommentRequest request)
     {
         var post = await _postRepo.GetByIdAsync(postId);
         if (post is null)
@@ -29,8 +29,8 @@ public class CommentService : ICommentService
         Comment newComment = new()
         {
             Id = Guid.NewGuid(),
-            PostId = request.PostId,
-            UserId = request.UserId,
+            PostId = postId,
+            UserId = currentUserId,
             ParentCommentId = request.ParentCommentId,
             Content = request.Content
         };
@@ -38,11 +38,14 @@ public class CommentService : ICommentService
         return Result.Success(newComment.ToResponse());
     }
 
-    public async Task<Result> DeleteCommentByIdAsync(Guid commentId)
+    public async Task<Result> DeleteCommentByIdAsync(Guid postId, Guid currentUserId, Guid commentId)
     {
         var comment = await _commentRepo.GetByIdAsync(commentId);
-        if (comment is null)
+        if (comment is null || comment.PostId != postId)
             return Result.Failure(new Error("Comment.NotFound", "Comment not found"));
+        
+        if (comment.UserId != currentUserId)
+            return Result.Failure(new Error("User.NotAllow", "You don't have permision to delete this comment"));
 
         await _commentRepo.DeleteAsync(comment);
         return Result.Success();
@@ -68,5 +71,24 @@ public class CommentService : ICommentService
         IEnumerable<Comment> rootComments = await _commentRepo.GetRootCommentsByPostId(postId);
         var response = rootComments.Select(c => c.ToResponse());
         return Result.Success(response);
+    }
+
+    public async Task<Result> UpdateCommentByIdAsync(Guid postId, Guid commentId, Guid currentUserId, UpdateCommentRequest request)
+    {
+        var post = await _postRepo.GetByIdAsync(postId);
+        if (post is null)
+            return Result.Failure(new Error("Post.NotFound", "Post not found!"));
+
+        var comment = await _commentRepo.GetByIdAsync(commentId);
+        if (comment is null || comment.PostId != postId)
+            return Result.Failure(new Error("Comment.NotFound", "Comment not found"));
+
+        if (comment.UserId != currentUserId)
+            return Result.Failure(new Error("User.NotAllow", "You don't have permision to update this comment"));
+
+        comment.Content = request.Content;
+        comment.UpdatedAt = DateTime.UtcNow;
+        await _commentRepo.UpdateAsync(comment);
+        return Result.Success();
     }
 }

@@ -9,6 +9,7 @@ public interface ICommentService
 {
     Task<Result<IEnumerable<CommentResponse>>> GetRootCommentByPostIdAsync(Guid postId);
     Task<Result<IEnumerable<CommentResponse>>> GetRepliesCommentByRootCommentIdAsync(Guid rootCommentId);
-    Task<Result<CommentResponse>> CreateNewCommentAsync(Guid postId, CreateCommentRequest request);
-    Task<Result> DeleteCommentByIdAsync(Guid commentId);
+    Task<Result<CommentResponse>> CreateNewCommentAsync(Guid postId, Guid currentUserId, CreateCommentRequest request);
+    Task<Result> DeleteCommentByIdAsync(Guid postId, Guid currentUserId, Guid commentId);
+    Task<Result> UpdateCommentByIdAsync(Guid postId, Guid commentId, Guid currentUserId, UpdateCommentRequest request);
 }
