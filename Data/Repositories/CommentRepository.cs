@@ -47,6 +47,22 @@ namespace SocialWebsite.Data.Repositories
                 .FirstOrDefaultAsync(c => c.Id == id);
         }
 
+        public async Task<IEnumerable<Comment>> GetRepliesByCommentId(Guid parentCommentId)
+        {
+            return await _context.Comments
+                .AsNoTracking()
+                .Where(c => c.ParentCommentId != null && c.ParentCommentId == parentCommentId)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<Comment>> GetRootCommentsByPostId(Guid postId)
+        {
+            return await _context.Comments
+                .AsNoTracking()
+                .Where(c => c.ParentCommentId == null)
+                .ToListAsync();
+        }
+
         public async Task UpdateAsync(Comment entity)
         {
             if (entity is null) throw new ArgumentNullException(nameof(entity));

@@ -1,0 +1,72 @@
+using System;
+using SocialWebsite.DTOs.comment;
+using SocialWebsite.DTOs.Comment;
+using SocialWebsite.Entities;
+using SocialWebsite.Interfaces.Repositories;
+using SocialWebsite.Interfaces.Services;
+using SocialWebsite.Mapping;
+using SocialWebsite.Shared;
+
+namespace SocialWebsite.Services;
+
+public class CommentService : ICommentService
+{
+    private readonly ICommentRepository _commentRepo;
+    private readonly IPostRepository _postRepo;
+    public CommentService(ICommentRepository commentRepository, IPostRepository postRepository)
+    {
+        _commentRepo = commentRepository;
+        _postRepo = postRepository;
+    }
+
+    public async Task<Result<CommentResponse>> CreateNewCommentAsync(Guid postId, CreateCommentRequest request)
+    {
+        var post = await _postRepo.GetByIdAsync(postId);
+        if (post is null)
+            return Result.Failure<CommentResponse>(new Error("Post.NotFound", "Post not found!"));
+
+
+        Comment newComment = new()
+        {
+            Id = Guid.NewGuid(),
+            PostId = request.PostId,
+            UserId = request.UserId,
+            ParentCommentId = request.ParentCommentId,
+            Content = request.Content
+        };
+        await _commentRepo.AddAsync(newComment);
+        return Result.Success(newComment.ToResponse());
+    }
+
+    public async Task<Result> DeleteCommentByIdAsync(Guid commentId)
+    {
+        var comment = await _commentRepo.GetByIdAsync(commentId);
+        if (comment is null)
+            return Result.Failure(new Error("Comment.NotFound", "Comment not found"));
+
+        await _commentRepo.DeleteAsync(comment);
+        return Result.Success();
+    }
+
+    public async Task<Result<IEnumerable<CommentResponse>>> GetRepliesCommentByRootCommentIdAsync(Guid rootCommentId)
+    {
+        var rootComent = await _commentRepo.GetByIdAsync(rootCommentId);
+        if (rootComent is null)
+            return Result.Failure<IEnumerable<CommentResponse>>(new Error("RootComment.NotFound", "Root comment not found"));
+
+        var replies = await _commentRepo.GetRepliesByCommentId(rootCommentId);
+        var response = replies.Select(c => c.ToResponse());
+        return Result.Success(response);
+    }
+
+    public async Task<Result<IEnumerable<CommentResponse>>> GetRootCommentByPostIdAsync(Guid postId)
+    {
+        var post = await _postRepo.GetByIdAsync(postId);
+        if (post is null)
+            return Result.Failure<IEnumerable<CommentResponse>>(new Error("Post.NotFound", "Post not found!"));
+    
+        IEnumerable<Comment> rootComments = await _commentRepo.GetRootCommentsByPostId(postId);
+        var response = rootComments.Select(c => c.ToResponse());
+        return Result.Success(response);
+    }
+}

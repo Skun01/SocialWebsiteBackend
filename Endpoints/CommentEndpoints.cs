@@ -1,4 +1,5 @@
 using System;
+using SocialWebsite.Interfaces.Services;
 
 namespace SocialWebsite.Endpoints;
 
