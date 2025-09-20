@@ -24,6 +24,22 @@ public static class CommentEndpoints
                 ? Results.Ok(result.Value)
                 : Results.BadRequest(result.Error);
         });
+        group.MapPost("/{commentId:guid}/repliess", async (
+            Guid commentId,
+            ICommentService commentService,
+            CreateCommentRequest request,
+            HttpContext httpContext
+        ) =>
+        {
+            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId is null || !Guid.TryParse(userId.ToString(), out Guid currentUserId))
+                return Results.BadRequest("User Id not found");
+
+            var result = await commentService.CreateReplyCommentAsync(currentUserId, commentId, request);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.BadRequest(result.Error);
+        });
 
         group.MapDelete("/{commentId:guid}", async (
             Guid commentId,

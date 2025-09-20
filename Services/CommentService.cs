@@ -25,7 +25,8 @@ public class CommentService : ICommentService
         _likeRepo = likeRepository;
     }
 
-    public async Task<Result<CommentResponse>> CreateNewCommentAsync(Guid postId, Guid currentUserId, CreateCommentRequest request)
+    public async Task<Result<CommentResponse>> CreateNewCommentAsync(Guid postId, Guid currentUserId,
+        CreateCommentRequest request)
     {
         var post = await _postRepo.GetByIdAsync(postId);
         if (post is null)
@@ -37,11 +38,29 @@ public class CommentService : ICommentService
             Id = Guid.NewGuid(),
             PostId = postId,
             UserId = currentUserId,
-            ParentCommentId = request.ParentCommentId,
+            ParentCommentId = null,
             Content = request.Content
         };
         await _commentRepo.AddAsync(newComment);
         return Result.Success(newComment.ToResponse());
+    }
+
+    public async Task<Result<CommentResponse>> CreateReplyCommentAsync(Guid currentUserId, Guid rootCommentId, CreateCommentRequest request)
+    {
+        var rootComment = await _commentRepo.GetByIdAsync(rootCommentId);
+        if (rootComment is null)
+            return Result.Failure<CommentResponse>(new Error("RootComment.NotFound", "Root comment not found"));
+
+        Comment newReplyComment = new()
+        {
+            Id = Guid.NewGuid(),
+            PostId = rootComment.PostId,
+            UserId = currentUserId,
+            ParentCommentId = rootCommentId,
+            Content = request.Content
+        };
+        await _commentRepo.AddAsync(newReplyComment);
+        return Result.Success(newReplyComment.ToResponse());
     }
 
     public async Task<Result> DeleteCommentByIdAsync(Guid currentUserId, Guid commentId)
