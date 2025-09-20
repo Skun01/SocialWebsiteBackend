@@ -9,5 +9,5 @@ public record class CommentResponse(
     DateTime CreatedAt,
     DateTime UpdatedAt,
     int LikeCount,
-    int ReplieCount
+    int ReplyCount
 );

@@ -57,9 +57,8 @@ public class CommentService : ICommentService
         if (rootComent is null)
             return Result.Failure<IEnumerable<CommentResponse>>(new Error("RootComment.NotFound", "Root comment not found"));
 
-        var replies = await _commentRepo.GetRepliesByCommentId(rootCommentId);
-        var response = replies.Select(c => c.ToResponse());
-        return Result.Success(response);
+        var replies = await _commentRepo.GetReplyResponsesByCommentId(rootCommentId);
+        return Result.Success(replies);
     }
 
     public async Task<Result<IEnumerable<CommentResponse>>> GetRootCommentByPostIdAsync(Guid postId)
@@ -68,9 +67,8 @@ public class CommentService : ICommentService
         if (post is null)
             return Result.Failure<IEnumerable<CommentResponse>>(new Error("Post.NotFound", "Post not found!"));
     
-        IEnumerable<Comment> rootComments = await _commentRepo.GetRootCommentsByPostId(postId);
-        var response = rootComments.Select(c => c.ToResponse());
-        return Result.Success(response);
+        var rootComments = await _commentRepo.GetRootCommentResponsesByPostId(postId);
+        return Result.Success(rootComments);
     }
 
     public async Task<Result> UpdateCommentByIdAsync(Guid postId, Guid commentId, Guid currentUserId, UpdateCommentRequest request)
