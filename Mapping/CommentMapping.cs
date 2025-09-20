@@ -17,7 +17,7 @@ public static class CommentMapping
             CreatedAt: comment.CreatedAt,
             UpdatedAt: comment.UpdatedAt,
             LikeCount: comment.Likes.Count,
-            ReplieCount: comment.Replies.Count
+            ReplyCount: comment.Replies.Count
         );
     }
 }

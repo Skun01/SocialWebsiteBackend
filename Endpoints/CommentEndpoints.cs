@@ -14,45 +14,18 @@ public static class CommentEndpoints
         var group = app.MapGroup(routePrefix)
             .WithTags("Comments");
 
-        group.MapGet("/", async (
-            Guid postId,
+        group.MapGet("/{commentId:guid}/replies", async (
+            Guid commentId,
             ICommentService commentService
         ) =>
         {
-            var result = await commentService.GetRootCommentByPostIdAsync(postId);
-            return Results.Ok(result.Value);
-        });
-
-        group.MapGet("/{rootCommentId:guid}", async (
-            Guid rootCommentId,
-            ICommentService commentService
-        ) =>
-        {
-            var result = await commentService.GetRepliesCommentByRootCommentIdAsync(rootCommentId);
+            var result = await commentService.GetRepliesCommentByRootCommentIdAsync(commentId);
             return result.IsSuccess
                 ? Results.Ok(result.Value)
                 : Results.BadRequest(result.Error);
         });
-
-        group.MapPost("/", async(
-            Guid postId,
-            [FromBody] CreateCommentRequest request,
-            ICommentService commentService,
-            HttpContext httpContext
-        ) =>
-        {
-            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (userId is null || !Guid.TryParse(userId.ToString(), out Guid currentUserId))
-                return Results.BadRequest("User Id not found");
-
-            var result = await commentService.CreateNewCommentAsync(postId, currentUserId, request);
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : Results.BadRequest(result.Error);
-        }).RequireAuthorization();
 
         group.MapDelete("/{commentId:guid}", async (
-            Guid postId,
             Guid commentId,
             ICommentService commentService,
             HttpContext httpContext
@@ -62,14 +35,13 @@ public static class CommentEndpoints
             if (userId is null || !Guid.TryParse(userId.ToString(), out Guid currentUserId))
                 return Results.BadRequest("User Id not found");
 
-            var result = await commentService.DeleteCommentByIdAsync(postId, currentUserId, commentId);
+            var result = await commentService.DeleteCommentByIdAsync(currentUserId, commentId);
             return result.IsSuccess
                 ? Results.NoContent()
                 : Results.BadRequest(result.Error);
         }).RequireAuthorization();
 
         group.MapPut("/{commentId:guid}", async (
-            Guid postId,
             Guid commentId,
             [FromBody] UpdateCommentRequest request,
             ICommentService commentService,
@@ -80,10 +52,32 @@ public static class CommentEndpoints
             if (userId is null || !Guid.TryParse(userId.ToString(), out Guid currentUserId))
                 return Results.BadRequest("User Id not found");
 
-            var result = await commentService.UpdateCommentByIdAsync(postId, commentId, currentUserId, request);
+            var result = await commentService.UpdateCommentByIdAsync(commentId, currentUserId, request);
             return result.IsSuccess
                 ? Results.NoContent()
                 : Results.BadRequest(result.Error);
+        }).RequireAuthorization();
+
+        group.MapPost("/{commentId:guid}/likes", async (
+            Guid commentId,
+            ICommentService commentService,
+            HttpContext context) =>
+        {
+            var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await commentService.LikeCommentAsync(commentId, Guid.Parse(userId!));
+            return result.IsSuccess ? Results.NoContent()
+                                    : Results.BadRequest(result.Error);
+        }).RequireAuthorization();
+
+        group.MapDelete("/{commentId:guid}/likes", async (
+            Guid commentId,
+            ICommentService commentService,
+            HttpContext context) =>
+        {
+            var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var result = await commentService.UnlikeCommentAsync(commentId, Guid.Parse(userId!));
+            return result.IsSuccess ? Results.NoContent()
+                                    : Results.BadRequest(result.Error);
         }).RequireAuthorization();
         
         return group;

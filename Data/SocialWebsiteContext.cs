@@ -75,8 +75,8 @@ public class SocialWebsiteContext : DbContext
                 .WithMany(u => u.Likes)
                 .HasForeignKey(l => l.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-            likeEntity.HasIndex(l => new { l.UserId, l.TargetId }).IsUnique();
-            likeEntity.HasIndex(l => l.TargetId);
+            likeEntity.HasIndex(l => new { l.UserId, l.TargetId, l.Type }).IsUnique();
+            likeEntity.HasIndex(l => l.UserId);
         });
 
         modelBuilder.Entity<Friendship>(friendshipEntity =>

@@ -1,6 +1,7 @@
 using System;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
+using SocialWebsite.DTOs.Comment;
 using SocialWebsite.DTOs.Post;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Services;
@@ -135,6 +136,32 @@ public static class PostEndpoints
             var result = await postService.UnlikePostAsync(postId, Guid.Parse(userId!));
             return result.IsSuccess ? Results.NoContent()
                                     : Results.BadRequest(result.Error);
+        }).RequireAuthorization();
+
+        group.MapGet("/{postId:guid}/comments", async (
+            Guid postId,
+            ICommentService commentService
+        ) =>
+        {
+            var result = await commentService.GetRootCommentByPostIdAsync(postId);
+            return Results.Ok(result.Value);
+        });
+
+        group.MapPost("/{postId:guid}/comments", async(
+            Guid postId,
+            [FromBody] CreateCommentRequest request,
+            ICommentService commentService,
+            HttpContext httpContext
+        ) =>
+        {
+            var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (userId is null || !Guid.TryParse(userId.ToString(), out Guid currentUserId))
+                return Results.BadRequest("User Id not found");
+
+            var result = await commentService.CreateNewCommentAsync(postId, currentUserId, request);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.BadRequest(result.Error);
         }).RequireAuthorization();
 
         return group;

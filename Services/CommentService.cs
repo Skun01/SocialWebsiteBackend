@@ -44,10 +44,10 @@ public class CommentService : ICommentService
         return Result.Success(newComment.ToResponse());
     }
 
-    public async Task<Result> DeleteCommentByIdAsync(Guid postId, Guid currentUserId, Guid commentId)
+    public async Task<Result> DeleteCommentByIdAsync(Guid currentUserId, Guid commentId)
     {
         var comment = await _commentRepo.GetByIdAsync(commentId);
-        if (comment is null || comment.PostId != postId)
+        if (comment is null)
             return Result.Failure(new Error("Comment.NotFound", "Comment not found"));
         
         if (comment.UserId != currentUserId)
@@ -87,7 +87,7 @@ public class CommentService : ICommentService
         if (isUserLiked)
             return Result.Failure(new Error("UserLikedComment", "User has liked this Comment"));
 
-        await _likeRepo.CreateLikeAsync(currentUserId, commentId, LikeType.Post);
+        await _likeRepo.CreateLikeAsync(currentUserId, commentId, LikeType.Comment);
         return Result.Success();
     }
 
@@ -105,14 +105,10 @@ public class CommentService : ICommentService
         return Result.Success();
     }
 
-    public async Task<Result> UpdateCommentByIdAsync(Guid postId, Guid commentId, Guid currentUserId, UpdateCommentRequest request)
+    public async Task<Result> UpdateCommentByIdAsync(Guid commentId, Guid currentUserId, UpdateCommentRequest request)
     {
-        var post = await _postRepo.GetByIdAsync(postId);
-        if (post is null)
-            return Result.Failure(new Error("Post.NotFound", "Post not found!"));
-
         var comment = await _commentRepo.GetByIdAsync(commentId);
-        if (comment is null || comment.PostId != postId)
+        if (comment is null)
             return Result.Failure(new Error("Comment.NotFound", "Comment not found"));
 
         if (comment.UserId != currentUserId)
