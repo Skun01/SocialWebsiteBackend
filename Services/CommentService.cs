@@ -6,6 +6,7 @@ using SocialWebsite.Interfaces.Repositories;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Mapping;
 using SocialWebsite.Shared;
+using SocialWebsite.Shared.Enums;
 
 namespace SocialWebsite.Services;
 
@@ -13,10 +14,15 @@ public class CommentService : ICommentService
 {
     private readonly ICommentRepository _commentRepo;
     private readonly IPostRepository _postRepo;
-    public CommentService(ICommentRepository commentRepository, IPostRepository postRepository)
+    private readonly IUserRepository _userRepo;
+    private readonly ILikeRepository _likeRepo;
+    public CommentService(ICommentRepository commentRepository, IPostRepository postRepository,
+        IUserRepository userRepository, ILikeRepository likeRepository)
     {
         _commentRepo = commentRepository;
         _postRepo = postRepository;
+        _userRepo = userRepository;
+        _likeRepo = likeRepository;
     }
 
     public async Task<Result<CommentResponse>> CreateNewCommentAsync(Guid postId, Guid currentUserId, CreateCommentRequest request)
@@ -69,6 +75,34 @@ public class CommentService : ICommentService
     
         var rootComments = await _commentRepo.GetRootCommentResponsesByPostId(postId);
         return Result.Success(rootComments);
+    }
+
+    public async Task<Result> LikeCommentAsync(Guid commentId, Guid currentUserId)
+    {
+        User? user = await _userRepo.GetByIdAsync(currentUserId);
+        if (user is null)
+            return Result.Failure(new Error("CreatePost.UserNotFount", "User not found"));
+
+        bool isUserLiked = await _likeRepo.IsUserLiked(currentUserId, commentId, LikeType.Comment);
+        if (isUserLiked)
+            return Result.Failure(new Error("UserLikedComment", "User has liked this Comment"));
+
+        await _likeRepo.CreateLikeAsync(currentUserId, commentId, LikeType.Post);
+        return Result.Success();
+    }
+
+    public async Task<Result> UnlikeCommentAsync(Guid commentId, Guid currentUserId)
+    {
+        User? user = await _userRepo.GetByIdAsync(currentUserId);
+        if (user is null)
+            return Result.Failure(new Error("CreatePost.UserNotFount", "User not found"));
+
+        bool isUserLiked = await _likeRepo.IsUserLiked(currentUserId, commentId, LikeType.Comment);
+        if (!isUserLiked)
+            return Result.Failure(new Error("UserUnLikedComment", "User still haven't like this Comment"));
+
+        await _likeRepo.DeleteLikeAsync(currentUserId, commentId, LikeType.Comment);
+        return Result.Success();
     }
 
     public async Task<Result> UpdateCommentByIdAsync(Guid postId, Guid commentId, Guid currentUserId, UpdateCommentRequest request)
