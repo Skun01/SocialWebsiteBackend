@@ -30,6 +30,19 @@ builder.Host.UseSerilog();
 string connectionString = builder.Configuration["ConnectionStrings:SqlDocker"]!;
 builder.Services.AddDbContext<SocialWebsiteContext>(options => options.UseSqlServer(connectionString));
 
+builder.Services.AddCors(option =>
+{
+    option.AddPolicy("react",
+    p => p.WithOrigins("http://localhost:5173", "http://localhost:3000")
+          .AllowAnyHeader()
+          .AllowAnyMethod()
+          .AllowCredentials()
+    );
+});
+
+// SignalR service
+builder.Services.AddSignalR();
+
 // Repository Register
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
@@ -122,6 +135,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseSeriRequestLog();
 app.UseExceptionHandler();
+app.UseCors("react");
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -134,4 +148,5 @@ version1.MapUserEndpoints("/users");
 version1.MapAuthEndpoints("/auth");
 version1.MapPostEndpoints("/posts");
 version1.MapCommentEndpoints("/comments");
+version1.MapHub<ChatHub>("/hubs/chat");
 app.Run();
