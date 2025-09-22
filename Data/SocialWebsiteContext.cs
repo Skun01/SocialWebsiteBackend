@@ -106,66 +106,32 @@ public class SocialWebsiteContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Conversation
-        modelBuilder.Entity<Conversation>(b =>
+        modelBuilder.Entity<ConversationParticipant>(entity =>
         {
-            b.HasKey(x => x.Id);
-            b.Property(x => x.Id)
-            .HasDefaultValueSql("NEWSEQUENTIALID()")
-            .ValueGeneratedOnAdd();
-            b.Property(x => x.Name).HasMaxLength(255);
-            b.Property(x => x.CreatedAt)
-            .HasDefaultValueSql("GETUTCDATE()");
-            b.HasIndex(x => x.CreatedAt);
-            b.Property(x => x.Type)
-             .HasConversion<int>()
-             .HasDefaultValue(ConversationType.Direct);
+            entity.HasKey(cp => new { cp.ConversationId, cp.UserId });
+            entity
+                .HasOne(cp => cp.Conversation)
+                .WithMany(c => c.Participants)
+                .HasForeignKey(cp => cp.ConversationId);
+            entity
+                .HasOne(cp => cp.User)
+                .WithMany()
+                .HasForeignKey(cp => cp.UserId);
         });
 
-        // ConversationParticipan
-        modelBuilder.Entity<ConversationParticipant>(b =>
-            {
-            b.HasKey(x => new { x.ConversationId, x.UserId });
-            b.Property(x => x.JoinedAt)
-            .HasDefaultValueSql("GETUTCDATE()");
-            b.HasOne(x => x.Conversation)
-            .WithMany(x => x.Participants)
-            .HasForeignKey(x => x.ConversationId)
-            .OnDelete(DeleteBehavior.Cascade);
-            b.HasOne(x => x.User)
-            .WithMany()
-            .HasForeignKey(x => x.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-            b.HasIndex(x => x.UserId);
-            b.HasIndex(x => x.LastReadMessageId);
-        });
-        
-        // Message
-        modelBuilder.Entity<Message>(b =>
+        modelBuilder.Entity<Message>(entity =>
         {
-            b.HasKey(x => x.Id);
-            b.Property(x => x.Id)
-            .HasDefaultValueSql("NEWSEQUENTIALID()")
-            .ValueGeneratedOnAdd();
-            b.Property(x => x.Content)
-            .IsRequired();
-            b.Property(x => x.CreatedAt)
-            .HasDefaultValueSql("GETUTCDATE()");
-            b.Property(x => x.ClientMessageId)
-            .HasMaxLength(36);
-            b.HasOne(x => x.Conversation)
-            .WithMany(x => x.Messages)
-            .HasForeignKey(x => x.ConversationId)
-            .OnDelete(DeleteBehavior.Cascade);
-            b.HasOne(x => x.Sender)
-            .WithMany() 
-            .HasForeignKey(x => x.SenderId)
-            .OnDelete(DeleteBehavior.Restrict);
-            b.HasIndex(x => new { x.ConversationId, x.CreatedAt });
-            b.HasIndex(x => x.SenderId);
-            b.HasIndex(x => new { x.ConversationId, x.SenderId, x.ClientMessageId })
-            .IsUnique()
-            .HasFilter("[ClientMessageId] IS NOT NULL");
+            entity
+                .HasOne(m => m.Conversation)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(m => m.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity
+                .HasOne(m => m.Sender)
+                .WithMany()
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
     }
