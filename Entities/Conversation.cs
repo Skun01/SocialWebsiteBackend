@@ -12,7 +12,6 @@ public class Conversation
     public string? Name { get; set; }
     public ConversationType Type { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
     public Guid? LastMessageId { get; set; }
     public DateTime? LastMessageTimestamp { get; set; }
 

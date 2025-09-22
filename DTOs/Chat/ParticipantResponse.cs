@@ -4,6 +4,7 @@ namespace SocialWebsite.DTOs.Chat;
 
 public record class ParticipantResponse(
     Guid UserId,
+    string UserName,
     ParticipantRole Role,
-    DateTime JoinedAt
+    string AvatarUrl
 );
