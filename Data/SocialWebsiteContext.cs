@@ -134,6 +134,12 @@ public class SocialWebsiteContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
+        modelBuilder.Entity<MessageReadStatus>(entity =>
+        {
+            entity
+                .HasKey(mrs => new { mrs.MessageId, mrs.UserId });
+        });
+
     }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

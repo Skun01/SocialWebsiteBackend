@@ -13,9 +13,16 @@ public class Message
     public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     [Required]
     public Guid SenderId { get; set; }
-    [ForeignKey("SenderId")]
-    public User? Sender { get; set; }
     public Guid ConversationId { get; set; }
+    public Guid? ParentMessageId { get; set; }
+
     [ForeignKey("ConversationId")]
-    public Conversation? Conversation { get; set; }
+    public virtual Conversation? Conversation { get; set; }
+
+    [ForeignKey("SenderId")]
+    public virtual User? Sender { get; set; }
+
+    [ForeignKey("ParentMessageId")]
+    public virtual Message? ParentMessage { get; set; }
+    public virtual List<MessageReadStatus> ReadByUsers { get; set; } = [];
 }
