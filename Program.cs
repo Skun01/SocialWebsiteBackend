@@ -143,6 +143,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.MapHub<ChatHub>("/chathub");
+
 //ENDPOINT
 var version1 = app.MapGroup("v1");
 version1.MapUserEndpoints("/users");

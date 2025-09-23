@@ -11,4 +11,5 @@ public interface IChatService
     Task<Result<MessageResponse>> CreateMessageAsync(Guid conversationId, Guid senderId, CreateMessageRequest request);
     Task<Result<List<ConversationResponse>>> GetUserConversationsAsync(Guid userId);
     Task<Result<CursorList<MessageResponse>>> GetConversationMessagesAsync(Guid conversationId, Guid userId, MessageQueryParameters query);
+    Task<IEnumerable<Guid>> GetUserConversationIdsAsync(Guid userId);
 }

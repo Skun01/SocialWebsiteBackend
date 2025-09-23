@@ -1,4 +1,5 @@
 using System;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using SocialWebsite.Data;
 using SocialWebsite.DTOs.Chat;
@@ -14,10 +15,12 @@ public class ChatService : IChatService
 {
     private readonly SocialWebsiteContext _context;
     private readonly IUserRepository _userRepo;
-    public ChatService(SocialWebsiteContext context, IUserRepository userRepository)
+    private readonly IHubContext<ChatHub> _hubContext;
+    public ChatService(SocialWebsiteContext context, IUserRepository userRepository, IHubContext<ChatHub> hubContext)
     {
         _context = context;
         _userRepo = userRepository;
+        _hubContext = hubContext;
     }
     public async Task<Result<ConversationResponse>> CreateConversationAsync(Guid creatorUserId, CreateConversationRequest request)
     {
@@ -89,8 +92,14 @@ public class ChatService : IChatService
         _context.Messages.Add(message);
         _context.conversations.Update(conversation);
         await _context.SaveChangesAsync();
+        var messageResponse = message.ToMessageResponse();
 
-        return Result.Success(message.ToMessageResponse());
+        // send message sender event:
+        await _hubContext.Clients
+            .Group(conversationId.ToString())
+            .SendAsync("ReceiveMessage", messageResponse);
+
+        return Result.Success(messageResponse);
     }
 
     public async Task<Result<CursorList<MessageResponse>>> GetConversationMessagesAsync(
@@ -131,31 +140,39 @@ public class ChatService : IChatService
 
     }
 
-    public async Task<Result<List<ConversationResponse>>> GetUserConversationsAsync(Guid userId)
-{
-    var conversations = await _context.conversations
-        .Include(c => c.Participants)
-            .ThenInclude(p => p.User)
-        .Include(c => c.Messages)
-            .ThenInclude(m => m.Sender) 
-        .Where(c => c.Participants.Any(p => p.UserId == userId))
-        .ToListAsync();
-
-    var conversationsResponse = conversations.Select(c =>
+    public async Task<IEnumerable<Guid>> GetUserConversationIdsAsync(Guid userId)
     {
-        var lastMessage = c.Messages
-                           .OrderByDescending(m => m.Timestamp)
-                           .FirstOrDefault();
-        var lastPersonSendMessage = lastMessage?.Sender;
+        return await _context.ConversationParticipants
+            .Where(cp => cp.UserId == userId)
+            .Select(cp => cp.ConversationId)
+            .ToListAsync();
+    }
 
-        return new ConversationResponse(
-            c.Id,
-            DisplayName: c.Name ?? lastPersonSendMessage?.Username ?? "Cuộc trò chuyện",
-            c.Type,
-            lastMessage?.ToMessageResponse() 
-        );
-    }).ToList();
+    public async Task<Result<List<ConversationResponse>>> GetUserConversationsAsync(Guid userId)
+    {
+        var conversations = await _context.conversations
+            .Include(c => c.Participants)
+                .ThenInclude(p => p.User)
+            .Include(c => c.Messages)
+                .ThenInclude(m => m.Sender) 
+            .Where(c => c.Participants.Any(p => p.UserId == userId))
+            .ToListAsync();
 
-    return Result.Success(conversationsResponse);
-}
+        var conversationsResponse = conversations.Select(c =>
+        {
+            var lastMessage = c.Messages
+                            .OrderByDescending(m => m.Timestamp)
+                            .FirstOrDefault();
+            var lastPersonSendMessage = lastMessage?.Sender;
+
+            return new ConversationResponse(
+                c.Id,
+                DisplayName: c.Name ?? lastPersonSendMessage?.Username ?? "Cuộc trò chuyện",
+                c.Type,
+                lastMessage?.ToMessageResponse() 
+            );
+        }).ToList();
+
+        return Result.Success(conversationsResponse);
+    }
 }
