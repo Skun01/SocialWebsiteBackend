@@ -15,9 +15,10 @@ public class SocialWebsiteContext : DbContext
     public DbSet<PasswordResetToken> PasswordResetTokens { set; get; }
     public DbSet<FileAsset> FileAssets { set; get; }
     public DbSet<PostFile> PostFiles { set; get; }
-    public DbSet<Conversation> conversations { set; get; }
+    public DbSet<Conversation> Conversations { set; get; }
     public DbSet<ConversationParticipant> ConversationParticipants { set; get; }
     public DbSet<Message> Messages { set; get; }
+    public DbSet<Notification> Notifications { set; get; }
     public SocialWebsiteContext(DbContextOptions<SocialWebsiteContext> options) : base(options) { }
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -141,6 +142,20 @@ public class SocialWebsiteContext : DbContext
         {
             entity
                 .HasKey(mrs => new { mrs.MessageId, mrs.UserId });
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity
+                .HasOne(n => n.Recipient)
+                .WithMany()
+                .HasForeignKey(n => n.RecipientUserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity
+                .HasOne(n => n.TriggeredByUser)
+                .WithMany()
+                .HasForeignKey(n => n.TriggeredByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
     }

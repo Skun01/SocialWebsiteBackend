@@ -54,7 +54,7 @@ public class ChatService : IChatService
             Conversation = newConversation
         };
 
-        _context.conversations.Add(newConversation);
+        _context.Conversations.Add(newConversation);
         _context.ConversationParticipants.AddRange(creatorParticipant, recipientParticipant);
 
         await _context.SaveChangesAsync(); 
@@ -86,11 +86,11 @@ public class ChatService : IChatService
             Timestamp = DateTime.UtcNow
         };
 
-        var conversation = await _context.conversations.FirstOrDefaultAsync(c => c.Id == conversationId);
+        var conversation = await _context.Conversations.FirstOrDefaultAsync(c => c.Id == conversationId);
         conversation!.LastMessageId = message.Id;
 
         _context.Messages.Add(message);
-        _context.conversations.Update(conversation);
+        _context.Conversations.Update(conversation);
         await _context.SaveChangesAsync();
         var messageResponse = message.ToMessageResponse();
 
@@ -150,7 +150,7 @@ public class ChatService : IChatService
 
     public async Task<Result<List<ConversationResponse>>> GetUserConversationsAsync(Guid userId)
     {
-        var conversations = await _context.conversations
+        var conversations = await _context.Conversations
             .Include(c => c.Participants)
                 .ThenInclude(p => p.User)
             .Include(c => c.Messages)
