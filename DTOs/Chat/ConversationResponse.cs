@@ -7,5 +7,5 @@ public record class ConversationResponse(
     Guid Id,
     string DisplayName,
     ConversationType Type,
-    MessageResponse LastMessage
+    MessageResponse? LastMessage
 );

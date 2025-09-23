@@ -13,8 +13,6 @@ public class Conversation
     public ConversationType Type { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public Guid? LastMessageId { get; set; }
-    public DateTime? LastMessageTimestamp { get; set; }
-
     public virtual List<ConversationParticipant> Participants { get; set; } = [];
     public virtual List<Message> Messages { get; set; } = [];
 }

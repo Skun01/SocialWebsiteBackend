@@ -1,6 +1,7 @@
 using System;
 using SocialWebsite.DTOs.Chat;
 using SocialWebsite.Entities;
+using SocialWebsite.Shared.Enums;
 
 namespace SocialWebsite.Mapping;
 
@@ -22,18 +23,18 @@ public static class ChatMapping
             Id: message.Id,
             Content: message.Content,
             Timestamp: message.Timestamp,
-            ParentMessageId: message.ParentMessageId,
+            ParentMessageId: message.ParentMessageId ?? null,
             SenderId: message.SenderId
         );
     }
 
-    public static ConversationResponse ToConversationResponse(this Conversation conversation, Message lastMessage)
+    public static ConversationResponse ToConversationResponse(this Conversation conversation, Message? lastMessage = null)
     {
         return new(
             Id: conversation.Id,
             DisplayName: conversation.Name ?? string.Empty,
-            Type: conversation.Type,
-            LastMessage: lastMessage.ToMessageResponse()
+            Type: conversation?.Type ?? ConversationType.OneToOne,
+            LastMessage: lastMessage?.ToMessageResponse()
         );
     }
 }

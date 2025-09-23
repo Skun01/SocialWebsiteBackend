@@ -7,8 +7,8 @@ namespace SocialWebsite.Interfaces.Services;
 
 public interface IChatService
 {
-    Task<ConversationResponse> CreateConversationAsync(Guid creatorUserId, Guid recipientUserId);
-    Task<MessageResponse> CreateMessageAsync(Guid conversationId, Guid senderId, string content);
-    Task<List<ConversationResponse>> GetUserConversationsAsync(Guid userId);
-    Task<CursorList<MessageResponse>> GetConversationMessagesAsync(Guid conversationId, Guid userId, int pageSize, string? nextCursor);
+    Task<Result<ConversationResponse>> CreateConversationAsync(Guid creatorUserId, CreateConversationRequest request);
+    Task<Result<MessageResponse>> CreateMessageAsync(Guid conversationId, Guid senderId, CreateMessageRequest request);
+    Task<Result<List<ConversationResponse>>> GetUserConversationsAsync(Guid userId);
+    Task<Result<CursorList<MessageResponse>>> GetConversationMessagesAsync(Guid conversationId, Guid userId, MessageQueryParameters query);
 }

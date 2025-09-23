@@ -1,5 +1,6 @@
 using System;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using SocialWebsite.DTOs.Chat;
 using SocialWebsite.Interfaces.Services;
 
@@ -18,10 +19,11 @@ public static class ChatEndpoints
             HttpContext context
         ) =>
         {
-            var creatorUserId = GetCurrentUserId(context); 
-            var conversation = await chatService.CreateConversationAsync(creatorUserId, request.RecipientUserId);
-
-            return Results.Ok(conversation);
+            var creatorUserId = GetCurrentUserId(context);
+            var result = await chatService.CreateConversationAsync(creatorUserId, request);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.BadRequest(result.Error);
         });
 
         group.MapPost("/conversations/{conversationId:guid}/messages", async (
@@ -32,28 +34,47 @@ public static class ChatEndpoints
         ) =>
         {
             var senderUserId = GetCurrentUserId(context);
-            try
-            {
-                var message = await chatService.CreateMessageAsync(conversationId, senderUserId, request.Content);
-                return Results.Created($"/api/chat/messages/{message.Id}", message);
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Results.Forbid(); 
-            }
+            var result = await chatService.CreateMessageAsync(conversationId, senderUserId, request);
+            return result.IsSuccess
+                ? Results.Created($"/api/chat/messages/{result.Value.Id}", result.Value)
+                : Results.BadRequest(result.Error);
         });
 
+        group.MapGet("/conversations/{conversationId:guid}/messages", async (
+            Guid conversationId,
+            [AsParameters] MessageQueryParameters query,
+            IChatService chatService,
+            HttpContext context
+        ) =>
+        {
+            var currentUserId = GetCurrentUserId(context);
+            var result = await chatService.GetConversationMessagesAsync(conversationId, currentUserId, query);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.BadRequest(result.Error);
+        });
 
+        group.MapGet("/conversations", async (
+            IChatService chatService,
+            HttpContext context
+        ) =>
+        {
+            var currentUserId = GetCurrentUserId(context);
+            var result = await chatService.GetUserConversationsAsync(currentUserId);
+            return result.IsSuccess
+                ? Results.Ok(result.Value)
+                : Results.BadRequest(result.Error);
+        });
 
         return group;
     }
     private static Guid GetCurrentUserId(HttpContext httpContext)
+    {
+        var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (Guid.TryParse(userIdString, out Guid userId))
         {
-            var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (Guid.TryParse(userIdString, out Guid userId))
-            {
-                return userId;
-            }
-            throw new Exception("Không thể xác định người dùng.");
+            return userId;
         }
+        throw new Exception("Không thể xác định người dùng.");
+    }
 }
