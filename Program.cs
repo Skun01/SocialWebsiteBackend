@@ -65,6 +65,7 @@ builder.Services.AddScoped<IFileService, LocalFileService>();
 builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IChatService, ChatService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 // Password hasher
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
@@ -152,4 +153,5 @@ version1.MapAuthEndpoints("/auth");
 version1.MapPostEndpoints("/posts");
 version1.MapCommentEndpoints("/comments");
 version1.MapChatEndpoints("/chat");
+version1.MapNotificationEndpoints("/notifications");
 app.Run();

@@ -2,6 +2,7 @@ using System;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using SocialWebsite.DTOs.Chat;
+using SocialWebsite.Extensions;
 using SocialWebsite.Interfaces.Services;
 
 namespace SocialWebsite.Endpoints;
@@ -19,8 +20,11 @@ public static class ChatEndpoints
             HttpContext context
         ) =>
         {
-            var creatorUserId = GetCurrentUserId(context);
-            var result = await chatService.CreateConversationAsync(creatorUserId, request);
+            var creatorUserId = context.GetCurrentUserId();
+            if(creatorUserId is null)
+                return Results.Unauthorized();
+
+            var result = await chatService.CreateConversationAsync((Guid)creatorUserId, request);
             return result.IsSuccess
                 ? Results.Ok(result.Value)
                 : Results.BadRequest(result.Error);
@@ -33,8 +37,10 @@ public static class ChatEndpoints
             HttpContext context
         ) =>
         {
-            var senderUserId = GetCurrentUserId(context);
-            var result = await chatService.CreateMessageAsync(conversationId, senderUserId, request);
+            var senderUserId = context.GetCurrentUserId();
+            if(senderUserId is null)
+                return Results.Unauthorized();
+            var result = await chatService.CreateMessageAsync(conversationId, (Guid)senderUserId, request);
             return result.IsSuccess
                 ? Results.Created($"/api/chat/messages/{result.Value.Id}", result.Value)
                 : Results.BadRequest(result.Error);
@@ -47,8 +53,10 @@ public static class ChatEndpoints
             HttpContext context
         ) =>
         {
-            var currentUserId = GetCurrentUserId(context);
-            var result = await chatService.GetConversationMessagesAsync(conversationId, currentUserId, query);
+            var currentUserId = context.GetCurrentUserId();
+            if(currentUserId is null)
+                return Results.Unauthorized();
+            var result = await chatService.GetConversationMessagesAsync(conversationId, (Guid)currentUserId, query);
             return result.IsSuccess
                 ? Results.Ok(result.Value)
                 : Results.BadRequest(result.Error);
@@ -59,8 +67,10 @@ public static class ChatEndpoints
             HttpContext context
         ) =>
         {
-            var currentUserId = GetCurrentUserId(context);
-            var result = await chatService.GetUserConversationsAsync(currentUserId);
+            var currentUserId = context.GetCurrentUserId();
+            if(currentUserId is null)
+                return Results.Unauthorized();
+            var result = await chatService.GetUserConversationsAsync((Guid)currentUserId);
             return result.IsSuccess
                 ? Results.Ok(result.Value)
                 : Results.BadRequest(result.Error);
@@ -68,13 +78,5 @@ public static class ChatEndpoints
 
         return group;
     }
-    private static Guid GetCurrentUserId(HttpContext httpContext)
-    {
-        var userIdString = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        if (Guid.TryParse(userIdString, out Guid userId))
-        {
-            return userId;
-        }
-        throw new Exception("Không thể xác định người dùng.");
-    }
+    
 }
