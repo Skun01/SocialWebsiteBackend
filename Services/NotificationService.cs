@@ -131,6 +131,7 @@ public class NotificationService : INotificationService
         {
             NotificationType.NewLikeOnPost => $"{userName} đã thích bài viết của bạn.",
             NotificationType.NewCommentOnPost => $"{userName} đã bình luận về bài viết của bạn.",
+            NotificationType.NewPostCreated => $"{userName} đã đăng một bài viết mới mới",
             _ => "Bạn có một thông báo mới."
         };
     }

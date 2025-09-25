@@ -6,7 +6,7 @@ namespace SocialWebsite.Interfaces.Services;
 public interface IPostService
 {
     Task<Result> DeletePostAsync(Guid postId);
-    Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest request);
+    Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest request, Guid currentUserId);
     Task<Result<PostResponse>> GetPostByIdAsync(Guid postId, Guid currentUserId);
     Task<Result<CursorList<PostResponse>>> GetPostsAsync(PostQueryParameters query);
     Task<Result> UpdatePostPrivacyAsync(Guid postId, ChangePostPrivacyRequest request);

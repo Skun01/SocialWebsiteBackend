@@ -17,9 +17,10 @@ public class PostService : IPostService
     private readonly IPostFileRepository _postFileRepo;
     private readonly IFileService _fileService;
     private readonly ILikeRepository _likeRepo;
+    private readonly INotificationService _notificationService;
     public PostService(IPostRepository postRepository, IConfiguration configuration,
         IUserRepository userRepository, IFileService fileService, IPostFileRepository postFileRepository,
-        ILikeRepository likeRepository)
+        ILikeRepository likeRepository, INotificationService notificationService)
     {
         _postRepo = postRepository;
         _fileUploadBaseUrl = configuration["FileUploadServer:BaseUrl"]!;
@@ -27,15 +28,16 @@ public class PostService : IPostService
         _fileService = fileService;
         _postFileRepo = postFileRepository;
         _likeRepo = likeRepository;
+        _notificationService = notificationService;
     }
 
-    public async Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest request)
+    public async Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest request, Guid currentUserId)
     {
-        User? user = await _userRepo.GetByIdAsync(request.UserId);
+        User? user = await _userRepo.GetByIdAsync(currentUserId);
         if (user is null)
             return Result.Failure<PostResponse>(new Error("CreatePost.UserNotFount", "User not found"));
 
-        Post newPost = await _postRepo.AddAsync(request.ToEntity());
+        Post newPost = await _postRepo.AddAsync(request.ToEntity(currentUserId));
         return Result.Success(
             newPost.ToResponse(
                 _fileUploadBaseUrl,
@@ -157,6 +159,16 @@ public class PostService : IPostService
             return Result.Failure(new Error("UserLikePost", "User has liked this post"));
 
         await _likeRepo.CreateLikeAsync(currentUserId, postId, LikeType.Post);
+
+        // create notification
+        var post = await _postRepo.GetByIdAsync(postId);
+        await _notificationService.CreateNotificationAsync(
+            recipientId: post!.UserId,
+            triggerId: currentUserId,
+            type: NotificationType.NewLikeOnPost,
+            targetId: postId
+        );
+
         return Result.Success();
     }
 

@@ -16,13 +16,15 @@ public class CommentService : ICommentService
     private readonly IPostRepository _postRepo;
     private readonly IUserRepository _userRepo;
     private readonly ILikeRepository _likeRepo;
+    private readonly INotificationService _notificationService;
     public CommentService(ICommentRepository commentRepository, IPostRepository postRepository,
-        IUserRepository userRepository, ILikeRepository likeRepository)
+        IUserRepository userRepository, ILikeRepository likeRepository, INotificationService notificationService)
     {
         _commentRepo = commentRepository;
         _postRepo = postRepository;
         _userRepo = userRepository;
         _likeRepo = likeRepository;
+        _notificationService = notificationService;
     }
 
     public async Task<Result<CommentResponse>> CreateNewCommentAsync(Guid postId, Guid currentUserId,
@@ -31,7 +33,6 @@ public class CommentService : ICommentService
         var post = await _postRepo.GetByIdAsync(postId);
         if (post is null)
             return Result.Failure<CommentResponse>(new Error("Post.NotFound", "Post not found!"));
-
 
         Comment newComment = new()
         {
@@ -42,6 +43,15 @@ public class CommentService : ICommentService
             Content = request.Content
         };
         await _commentRepo.AddAsync(newComment);
+
+        // create notification
+        await _notificationService.CreateNotificationAsync(
+            recipientId: post.UserId,
+            triggerId: currentUserId,
+            type: NotificationType.NewCommentOnPost,
+            targetId: newComment.Id
+        );
+        
         return Result.Success(newComment.ToResponse());
     }
 
@@ -60,6 +70,16 @@ public class CommentService : ICommentService
             Content = request.Content
         };
         await _commentRepo.AddAsync(newReplyComment);
+
+        // create notification
+        var post = await _postRepo.GetByIdAsync(rootComment.PostId);
+        await _notificationService.CreateNotificationAsync(
+            recipientId: post!.UserId,
+            triggerId: currentUserId,
+            type: NotificationType.NewCommentOnPost,
+            targetId: newReplyComment.Id
+        );
+
         return Result.Success(newReplyComment.ToResponse());
     }
 

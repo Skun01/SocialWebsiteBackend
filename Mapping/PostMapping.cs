@@ -24,12 +24,12 @@ public static class PostMapping
         );
     }
 
-    public static Post ToEntity(this CreatePostRequest request)
+    public static Post ToEntity(this CreatePostRequest request, Guid currentUserId)
     {
         return new()
         {
             Id = Guid.NewGuid(),
-            UserId = request.UserId,
+            UserId = currentUserId,
             Content = request.Content,
             Privacy = request.Privacy
         };

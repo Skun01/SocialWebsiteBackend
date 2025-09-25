@@ -3,6 +3,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using SocialWebsite.DTOs.Comment;
 using SocialWebsite.DTOs.Post;
+using SocialWebsite.Extensions;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Services;
 using SocialWebsite.Shared;
@@ -28,14 +29,19 @@ public static class PostEndpoints
 
         group.MapPost("/", async (
             [FromBody] CreatePostRequest request,
-            IPostService postService
+            IPostService postService,
+            HttpContext context
         ) =>
         {
-            var result = await postService.CreatePostAsync(request);
+            var currentUserId = context.GetCurrentUserId();
+            if (currentUserId is null)
+                return Results.Unauthorized();
+                
+            var result = await postService.CreatePostAsync(request, (Guid)currentUserId);
             return result.IsSuccess
                 ? Results.Ok(result.Value)
                 : Results.BadRequest(result.Error);
-        });
+        }).RequireAuthorization();
 
         group.MapGet("/{postId:guid}", async (
             Guid postId,
