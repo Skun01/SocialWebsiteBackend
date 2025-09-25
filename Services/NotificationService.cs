@@ -1,8 +1,10 @@
 using System;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using SocialWebsite.Data;
 using SocialWebsite.DTOs.Notification;
 using SocialWebsite.Entities;
+using SocialWebsite.Hubs;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Mapping;
 using SocialWebsite.Shared;
@@ -13,9 +15,12 @@ namespace SocialWebsite.Services;
 public class NotificationService : INotificationService
 {
     private readonly SocialWebsiteContext _context;
-    public NotificationService(SocialWebsiteContext context)
+        private readonly IHubContext<NotificationHub> _hubContext;
+
+    public NotificationService(SocialWebsiteContext context, IHubContext<NotificationHub> hubContext)
     {
         _context = context;
+        _hubContext = hubContext;
     }
 
     public async Task<Result> CreateNotificationAsync(Guid recipientId, Guid triggerId, NotificationType type, Guid targetId)
@@ -35,6 +40,34 @@ public class NotificationService : INotificationService
 
         _context.Notifications.Add(notification);
         await _context.SaveChangesAsync();
+
+        //USING SIGNALR
+        
+        // Lấy thông tin đầy đủ của người gây ra hành động để tạo DTO.
+        // Client cần biết ai đã like/comment bài viết của họ.
+        var triggeredByUser = await _context.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == triggerId);
+
+        if (triggeredByUser != null)
+        {
+            // Tạo DTO (NotificationResponse) giống hệt như DTO bạn trả về trong API.
+            // Điều này đảm bảo dữ liệu nhất quán ở mọi nơi.
+            var notificationDto = new NotificationResponse(
+                notification.Id,
+                triggeredByUser.ToResponse(),
+                notification.Type,
+                GenerateMessage(notification.Type, triggeredByUser.Username),
+                notification.Link,
+                notification.IsRead,
+                notification.CreatedAt
+            );
+
+            // Gửi DTO này tới group riêng của người nhận.
+            await _hubContext.Clients
+                .Group(recipientId.ToString()) // Chọn đúng kênh của người nhận
+                .SendAsync("ReceiveNotification", notificationDto); // Gửi sự kiện "ReceiveNotification" với dữ liệu là DTO
+        }
 
         return Result.Success();
     }

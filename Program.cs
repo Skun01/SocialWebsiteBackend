@@ -16,6 +16,7 @@ using SocialWebsite.Entities;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using SocialWebsite.Hubs;
 //BUILDER
 var builder = WebApplication.CreateBuilder(args);
 // Init serilog
@@ -145,6 +146,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapHub<ChatHub>("/chathub");
+app.MapHub<NotificationHub>("/notificationHub");
 
 //ENDPOINT
 var version1 = app.MapGroup("v1");

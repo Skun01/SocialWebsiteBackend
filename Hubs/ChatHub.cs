@@ -1,7 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.SignalR;
 using SocialWebsite.Interfaces.Services;
-
+namespace SocialWebsite.Hubs;
 public class ChatHub : Hub
 {
     private readonly IChatService _chatService;
