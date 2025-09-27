@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SocialWebsite.DTOs.Post;
 using SocialWebsite.Entities;
 using SocialWebsite.Interfaces.Repositories;
+using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Mapping;
 using SocialWebsite.Shared;
 using SocialWebsite.Shared.Enums;
@@ -11,10 +12,12 @@ namespace SocialWebsite.Data.Repositories;
 
 public class PostRepository : IPostRepository
 {
+    private readonly ICacheService _cacheService;
     private readonly SocialWebsiteContext _context;
-    public PostRepository(SocialWebsiteContext context)
+    public PostRepository(SocialWebsiteContext context, ICacheService cacheService)
     {
         _context = context;
+        _cacheService = cacheService;
     }
     public async Task<Post> AddAsync(Post entity)
     {
@@ -30,6 +33,9 @@ public class PostRepository : IPostRepository
     {
         _context.Posts.Remove(entity);
         await _context.SaveChangesAsync();
+
+        // remove cache
+        _cacheService.Remove($"Post_{entity.Id}");
     }
 
     public async Task<IEnumerable<Post>> GetAllAsync()
@@ -95,19 +101,34 @@ public class PostRepository : IPostRepository
 
     public async Task<Post?> GetByIdAsync(Guid id)
     {
-        return await _context.Posts
+        // check if data exist in cache:
+        string cacheKey = $"Post_{id}";
+
+        if (_cacheService.TryGetValue<Post>(cacheKey, out var cachedPost) && cachedPost != null)
+            return cachedPost;
+
+        var post = await _context.Posts
             .Include(p => p.User)
             .Include(p => p.Comments)
             .Include(p => p.Files)
                 .ThenInclude(pf => pf.FileAsset)
             .AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == id);
+        
+        // save it in cache if not
+        if (post != null)
+            _cacheService.Set(cacheKey, post, TimeSpan.FromMinutes(10));
+        
+        return post;
     }
 
     public async Task UpdateAsync(Post entity)
     {
         _context.Posts.Update(entity);
         await _context.SaveChangesAsync();
+
+        // remove cache
+        _cacheService.Remove($"Post_{entity.Id}");
     }
 
     public async Task UpdatePrivacy(Guid postId, PostPrivacy privacy)
