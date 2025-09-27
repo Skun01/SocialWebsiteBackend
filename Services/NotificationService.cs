@@ -165,6 +165,8 @@ public class NotificationService : INotificationService
             NotificationType.NewLikeOnPost => $"{userName} đã thích bài viết của bạn.",
             NotificationType.NewCommentOnPost => $"{userName} đã bình luận về bài viết của bạn.",
             NotificationType.NewPostCreated => $"{userName} đã đăng một bài viết mới mới",
+            NotificationType.NewFriendRequest => $"{userName} đã gửi cho bạn lời mời kết bạn.",
+            NotificationType.FriendRequestAccepted => $"{userName} đã chấp nhận lời mời kết bạn của bạn.",
             _ => "Bạn có một thông báo mới."
         };
     }

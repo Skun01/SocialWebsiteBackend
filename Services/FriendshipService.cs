@@ -12,9 +12,11 @@ namespace SocialWebsite.Services;
 public class FriendshipService : IFriendshipService
 {
     private readonly SocialWebsiteContext _context;
-    public FriendshipService(SocialWebsiteContext context)
+    private readonly INotificationService _notificationService;
+    public FriendshipService(SocialWebsiteContext context, INotificationService notificationService)
     {
         _context = context;
+        _notificationService = notificationService;
     }
 
     public async Task<Result> AcceptFriendRequestAsync(Guid senderId, Guid receiverId)
@@ -34,6 +36,14 @@ public class FriendshipService : IFriendshipService
 
         _context.Friendships.Update(friendship);
         await _context.SaveChangesAsync();
+
+        // Send notification to sender
+        await _notificationService.CreateNotificationAsync(
+            recipientId: senderId,
+            triggerId: receiverId,
+            type: NotificationType.FriendRequestAccepted,
+            targetId: receiverId 
+        );
         return Result.Success();
     }
 
@@ -152,6 +162,15 @@ public class FriendshipService : IFriendshipService
 
         _context.Friendships.Add(friendship);
         await _context.SaveChangesAsync();
+
+        // Send notification:
+        await _notificationService.CreateNotificationAsync(
+            recipientId: receiverId,
+            triggerId: senderId,
+            type: NotificationType.NewFriendRequest,
+            targetId: senderId
+        );
+
         return Result.Success();
     }
 }
