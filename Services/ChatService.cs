@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using SocialWebsite.Data;
 using SocialWebsite.DTOs.Chat;
 using SocialWebsite.Entities;
+using SocialWebsite.Hubs;
 using SocialWebsite.Interfaces.Repositories;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Mapping;

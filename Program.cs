@@ -67,6 +67,7 @@ builder.Services.AddScoped<IEmailSenderService, EmailSenderService>();
 builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IFriendshipService, FriendshipService>();
 // Password hasher
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
@@ -145,7 +146,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapHub<ChatHub>("/chathub");
+app.MapHub<ChatHub>("/chatHub");
 app.MapHub<NotificationHub>("/notificationHub");
 
 //ENDPOINT
@@ -156,4 +157,5 @@ version1.MapPostEndpoints("/posts");
 version1.MapCommentEndpoints("/comments");
 version1.MapChatEndpoints("/chat");
 version1.MapNotificationEndpoints("/notifications");
+version1.MapFriendShipEndpoints("/friendships");
 app.Run();

@@ -150,7 +150,8 @@ public class FriendshipService : IFriendshipService
             CreatedAt = DateTime.UtcNow
         };
 
-        await _context.Friendships.AddAsync(friendship);
+        _context.Friendships.Add(friendship);
+        await _context.SaveChangesAsync();
         return Result.Success();
     }
 }
