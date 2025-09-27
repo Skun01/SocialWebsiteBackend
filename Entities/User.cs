@@ -30,4 +30,9 @@ public class User
     public virtual List<Like> Likes { set; get; } = [];
     public virtual List<Friendship> SentFriendships { set; get; } = [];
     public virtual List<Friendship> ReceivedFriendships { set; get; } = [];
+    public virtual List<Notification> ReceivedNotifications { set; get; } = [];
+    public virtual List<Notification> TriggeredNotifications { set; get; } = [];
+    public virtual List<Message> SentMessages { set; get; } = [];
+    public virtual List<ConversationParticipant> ConversationParticipants { set; get; } = [];
+    public virtual List<MessageReadStatus> MessageReadStatuses { set; get; } = [];
 }
