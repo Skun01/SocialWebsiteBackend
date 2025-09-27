@@ -37,14 +37,15 @@ public class PasswordResetTokenRepository : IPasswordResetTokenRepository
         await _context.SaveChangesAsync();
     }
 
-    public Task DeleteAsync(PasswordResetToken entity)
+    public async Task DeleteAsync(PasswordResetToken entity)
     {
-        throw new NotImplementedException();
+        _context.PasswordResetTokens.Remove(entity);
+        await _context.SaveChangesAsync();
     }
 
-    public Task<IEnumerable<PasswordResetToken>> GetAllAsync()
+    public async Task<IEnumerable<PasswordResetToken>> GetAllAsync()
     {
-        throw new NotImplementedException();
+        return await _context.PasswordResetTokens.ToListAsync();
     }
 
     public async Task<PasswordResetToken?> GetByIdAsync(Guid id)
@@ -61,8 +62,9 @@ public class PasswordResetTokenRepository : IPasswordResetTokenRepository
         await _context.SaveChangesAsync();
     }
 
-    public Task UpdateAsync(PasswordResetToken entity)
+    public async Task UpdateAsync(PasswordResetToken entity)
     {
-        throw new NotImplementedException();
+        _context.PasswordResetTokens.Update(entity);
+        await _context.SaveChangesAsync();
     }
 }

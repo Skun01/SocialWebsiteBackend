@@ -5,6 +5,7 @@ using SocialWebsite.Data;
 using SocialWebsite.DTOs.Notification;
 using SocialWebsite.Entities;
 using SocialWebsite.Hubs;
+using SocialWebsite.Interfaces.Repositories;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Mapping;
 using SocialWebsite.Shared;
@@ -14,12 +15,14 @@ namespace SocialWebsite.Services;
 
 public class NotificationService : INotificationService
 {
-    private readonly SocialWebsiteContext _context;
-        private readonly IHubContext<NotificationHub> _hubContext;
+    private readonly INotificationRepository _notificationRepo;
+    private readonly IUserRepository _userRepo;
+    private readonly IHubContext<NotificationHub> _hubContext;
 
-    public NotificationService(SocialWebsiteContext context, IHubContext<NotificationHub> hubContext)
+    public NotificationService(INotificationRepository notificationRepository, IUserRepository userRepository, IHubContext<NotificationHub> hubContext)
     {
-        _context = context;
+        _notificationRepo = notificationRepository;
+        _userRepo = userRepository;
         _hubContext = hubContext;
     }
 
@@ -38,16 +41,13 @@ public class NotificationService : INotificationService
             Link = $"/posts/{targetId}"
         };
 
-        _context.Notifications.Add(notification);
-        await _context.SaveChangesAsync();
+        await _notificationRepo.AddAsync(notification);
 
         //USING SIGNALR
         
         // Lấy thông tin đầy đủ của người gây ra hành động để tạo DTO.
         // Client cần biết ai đã like/comment bài viết của họ.
-        var triggeredByUser = await _context.Users
-            .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == triggerId);
+        var triggeredByUser = await _userRepo.GetByIdAsync(triggerId);
 
         if (triggeredByUser != null)
         {
@@ -74,87 +74,45 @@ public class NotificationService : INotificationService
 
     public async Task<Result> DeleteNotificationAsync(Guid notificationId, Guid userId)
     {
-        var notification = await _context.Notifications
-            .FirstOrDefaultAsync(n => n.Id == notificationId && n.RecipientUserId == userId);
+        var notification = await _notificationRepo.GetNotificationByIdAndUserIdAsync(notificationId, userId);
 
         if (notification == null)
         {
             return Result.Success();
         }
 
-        _context.Notifications.Remove(notification);
-        await _context.SaveChangesAsync();
+        await _notificationRepo.DeleteAsync(notification);
         return Result.Success();
     }
 
     public async Task<Result<UnreadCountResponse>> GetUnreadNotificationCountAsync(Guid userId)
     {
-        var count = await _context.Notifications
-            .CountAsync(n => n.RecipientUserId == userId && !n.IsRead);
+        var count = await _notificationRepo.GetUnreadNotificationCountAsync(userId);
 
         return Result.Success(new UnreadCountResponse(count));
     }
 
     public async Task<Result<CursorList<NotificationResponse>>> GetUserNotificationsAsync(Guid userId, NotificationQueryParameters query)
     {
-        var baseQuery = _context.Notifications.AsNoTracking();
-        baseQuery = baseQuery.Where(n => n.RecipientUserId == userId)
-                             .Include(n => n.TriggeredByUser)
-                             .OrderByDescending(n => n.CreatedAt);
-        var decodedCursor = CursorHelper.DecodeCursor(query.Cursor);
-        if (decodedCursor.HasValue)
-        {
-            var (cursorCreatedAt, cursorId) = decodedCursor.Value;
-            baseQuery = baseQuery.Where(p =>
-                p.CreatedAt < cursorCreatedAt ||
-                (p.CreatedAt == cursorCreatedAt && p.Id.CompareTo(cursorId) < 0)
-            );
-        }
-        var notifications = await baseQuery
-            .Include(n => n.TriggeredByUser)
-            .Take(query.PageSize + 1)
-            .Select(n => new NotificationResponse(
-                n.Id,
-                n.TriggeredByUser.ToResponse(),
-                n.Type,
-                GenerateMessage(n.Type, n.TriggeredByUser.Username),
-                n.Link,
-                n.IsRead,
-                n.CreatedAt
-            )).ToListAsync();
-
-        bool hasNextPage = notifications.Count > query.PageSize;
-        string? nextCursor = null;
-        if (hasNextPage)
-        {
-            notifications.RemoveAt(query.PageSize);
-            var lastItem = notifications.Last();
-            if (lastItem != null)
-                nextCursor = CursorHelper.EncodeCursor(lastItem.CreatedAt, lastItem.Id);
-        }
-
-        return Result.Success(new CursorList<NotificationResponse>(notifications, nextCursor, hasNextPage));
+        var notifications = await _notificationRepo.GetUserNotificationsAsync(userId, query);
+        return Result.Success(notifications);
     }
 
     public async Task<Result<int>> MarkAllNotificationsAsReadAsync(Guid userId)
     {
-        int num = await _context.Notifications
-           .Where(n => n.RecipientUserId == userId && !n.IsRead)
-           .ExecuteUpdateAsync(updates => updates.SetProperty(n => n.IsRead, true));
-
+        int num = await _notificationRepo.MarkAllNotificationsAsReadAsync(userId);
         return Result.Success(num);
     }
 
     public async Task<Result> MarkNotificationAsReadAsync(Guid notificationId, Guid userId)
     {
-        var notification = await _context.Notifications
-            .FirstOrDefaultAsync(n => n.Id == notificationId && n.RecipientUserId == userId);
+        var notification = await _notificationRepo.GetNotificationByIdAndUserIdAsync(notificationId, userId);
 
         if (notification == null || notification.IsRead)
             return Result.Failure(new Error("Notification.Mark", "Mark notification error"));
 
         notification.IsRead = true;
-        await _context.SaveChangesAsync();
+        await _notificationRepo.UpdateAsync(notification);
         return Result.Success();
     }
 
@@ -164,7 +122,7 @@ public class NotificationService : INotificationService
         {
             NotificationType.NewLikeOnPost => $"{userName} đã thích bài viết của bạn.",
             NotificationType.NewCommentOnPost => $"{userName} đã bình luận về bài viết của bạn.",
-            NotificationType.NewPostCreated => $"{userName} đã đăng một bài viết mới mới",
+            NotificationType.NewPostCreated => $"{userName} đã đăng một bài viết mới",
             NotificationType.NewFriendRequest => $"{userName} đã gửi cho bạn lời mời kết bạn.",
             NotificationType.FriendRequestAccepted => $"{userName} đã chấp nhận lời mời kết bạn của bạn.",
             _ => "Bạn có một thông báo mới."

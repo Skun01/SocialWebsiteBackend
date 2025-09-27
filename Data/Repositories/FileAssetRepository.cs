@@ -1,4 +1,5 @@
 using System;
+using Microsoft.EntityFrameworkCore;
 using SocialWebsite.Entities;
 using SocialWebsite.Interfaces.Repositories;
 
@@ -11,9 +12,11 @@ public class FileAssetRepository : IFileAssetRepository
     {
         _context = context;
     }
-    public Task<FileAsset> AddAsync(FileAsset entity)
+    public async Task<FileAsset> AddAsync(FileAsset entity)
     {
-        throw new NotImplementedException();
+        _context.FileAssets.Add(entity);
+        await _context.SaveChangesAsync();
+        return entity;
     }
 
     public async Task<IEnumerable<FileAsset>> AddRangeAsync(List<FileAsset> fileAssets)
@@ -23,23 +26,25 @@ public class FileAssetRepository : IFileAssetRepository
         return fileAssets;
     }
 
-    public Task DeleteAsync(FileAsset entity)
+    public async Task DeleteAsync(FileAsset entity)
     {
-        throw new NotImplementedException();
+        _context.FileAssets.Remove(entity);
+        await _context.SaveChangesAsync();
     }
 
-    public Task<IEnumerable<FileAsset>> GetAllAsync()
+    public async Task<IEnumerable<FileAsset>> GetAllAsync()
     {
-        throw new NotImplementedException();
+        return await _context.FileAssets.ToListAsync();
     }
 
-    public Task<FileAsset?> GetByIdAsync(Guid id)
+    public async Task<FileAsset?> GetByIdAsync(Guid id)
     {
-        throw new NotImplementedException();
+        return await _context.FileAssets.FirstOrDefaultAsync(fa => fa.Id == id);
     }
 
-    public Task UpdateAsync(FileAsset entity)
+    public async Task UpdateAsync(FileAsset entity)
     {
-        throw new NotImplementedException();
+        _context.FileAssets.Update(entity);
+        await _context.SaveChangesAsync();
     }
 }

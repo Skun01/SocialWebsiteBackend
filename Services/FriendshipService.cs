@@ -1,8 +1,7 @@
 using System;
-using Microsoft.EntityFrameworkCore;
-using SocialWebsite.Data;
 using SocialWebsite.DTOs.Friendship;
 using SocialWebsite.Entities;
+using SocialWebsite.Interfaces.Repositories;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Shared;
 using SocialWebsite.Shared.Enums;
@@ -11,22 +10,18 @@ namespace SocialWebsite.Services;
 
 public class FriendshipService : IFriendshipService
 {
-    private readonly SocialWebsiteContext _context;
+    private readonly IFriendshipRepository _friendshipRepo;
     private readonly INotificationService _notificationService;
-    public FriendshipService(SocialWebsiteContext context, INotificationService notificationService)
+    
+    public FriendshipService(IFriendshipRepository friendshipRepository, INotificationService notificationService)
     {
-        _context = context;
+        _friendshipRepo = friendshipRepository;
         _notificationService = notificationService;
     }
 
     public async Task<Result> AcceptFriendRequestAsync(Guid senderId, Guid receiverId)
     {
-        var friendship = await _context.Friendships
-           .FirstOrDefaultAsync(
-               f => f.SenderId == senderId
-               && f.ReceiverId == receiverId
-               && f.Status == FriendshipStatus.Pending
-           );
+        var friendship = await _friendshipRepo.GetFriendshipAsync(senderId, receiverId, FriendshipStatus.Pending);
 
         if (friendship == null)
             return Result.Failure(new Error("NotFound", "Friendship not found!"));
@@ -34,8 +29,7 @@ public class FriendshipService : IFriendshipService
         friendship.Status = FriendshipStatus.Accepted;
         friendship.UpdatedAt = DateTime.UtcNow;
 
-        _context.Friendships.Update(friendship);
-        await _context.SaveChangesAsync();
+        await _friendshipRepo.UpdateAsync(friendship);
 
         // Send notification to sender
         await _notificationService.CreateNotificationAsync(
@@ -49,92 +43,46 @@ public class FriendshipService : IFriendshipService
 
     public async Task<Result> DeclineFriendRequestAsync(Guid senderId, Guid receiverId)
     {
-        var friendship = await _context.Friendships
-            .FirstOrDefaultAsync(
-                f => f.SenderId == senderId
-                && f.ReceiverId == receiverId
-                && f.Status == FriendshipStatus.Pending
-            );
+        var friendship = await _friendshipRepo.GetFriendshipAsync(senderId, receiverId, FriendshipStatus.Pending);
 
         if (friendship == null)
             return Result.Failure(new Error("NotFound", "Friendship not found!"));
 
-        _context.Friendships.Remove(friendship);
-        await _context.SaveChangesAsync();
+        await _friendshipRepo.DeleteAsync(friendship.Id);
         return Result.Success();
     }
 
     public async Task<Result<IEnumerable<FriendshipResponse>>> GetFriendsAsync(Guid userId)
     {
-        var friends = await _context.Friendships
-            .AsNoTracking()
-            .Where(f => (f.SenderId == userId || f.ReceiverId == userId) && f.Status == FriendshipStatus.Accepted)
-            .Select(f => new 
-            {
-                User = f.SenderId == userId ? f.Receiver : f.Sender, 
-                FriendSince = f.UpdatedAt ?? f.CreatedAt
-            })
-            .Select(x => new FriendshipResponse(
-                x.User.Id,
-                x.User.Username,
-                x.User.ProfilePictureUrl,
-                x.FriendSince,
-                FriendshipStatus.Accepted
-            ))
-            .ToListAsync();
-
-        return Result.Success((IEnumerable<FriendshipResponse>)friends);
+        var friends = await _friendshipRepo.GetFriendsAsync(userId);
+        return Result.Success(friends);
     }
 
     public async Task<Result<IEnumerable<FriendshipResponse>>> GetReceivedFriendRequestsAsync(Guid userId)
     {
-        var requests = await _context.Friendships
-            .Where(f => f.ReceiverId == userId && f.Status == FriendshipStatus.Pending)
-            .Include(f => f.Sender)
-            .AsNoTracking()
-            .Select(x => new FriendshipResponse(
-                x.Sender.Id,
-                x.Sender.Username,
-                x.Sender.ProfilePictureUrl,
-                x.CreatedAt,
-                x.Status
-            ))
-            .ToListAsync();
-
-        return Result.Success((IEnumerable<FriendshipResponse>)requests);
+        var requests = await _friendshipRepo.GetReceivedFriendRequestsAsync(userId);
+        return Result.Success(requests);
     }
 
     public async Task<Result<IEnumerable<FriendshipResponse>>> GetSentFriendRequestsAsync(Guid userId)
     {
-        var requests = await _context.Friendships
-            .Where(f => f.SenderId == userId && f.Status == FriendshipStatus.Pending)
-            .Include(f => f.Receiver)
-            .AsNoTracking()
-            .Select(x => new FriendshipResponse(
-                x.Sender.Id,
-                x.Sender.Username,
-                x.Sender.ProfilePictureUrl,
-                x.CreatedAt,
-                x.Status
-            ))
-            .ToListAsync();
-
-        return Result.Success((IEnumerable<FriendshipResponse>)requests);
+        var requests = await _friendshipRepo.GetSentFriendRequestsAsync(userId);
+        return Result.Success(requests);
     }
 
     public async Task<Result> RemoveFriendAsync(Guid currentUserId, Guid friendId)
     {
-        var friendship = await _context.Friendships
-            .FirstOrDefaultAsync(f =>
-                f.Status == FriendshipStatus.Accepted &&
-                ((f.SenderId == currentUserId && f.ReceiverId == friendId) ||
-                 (f.SenderId == friendId && f.ReceiverId == currentUserId)));
-
+        var areFriends = await _friendshipRepo.AreFriendsAsync(currentUserId, friendId);
+        if (!areFriends)
+            return Result.Failure(new Error("NotFound", "Friendship not found!"));
+            
+        var friendship = await _friendshipRepo.GetFriendshipAsync(currentUserId, friendId, FriendshipStatus.Accepted) 
+            ?? await _friendshipRepo.GetFriendshipAsync(friendId, currentUserId, FriendshipStatus.Accepted);
+            
         if (friendship == null)
             return Result.Failure(new Error("NotFound", "Friendship not found!"));
-
-        _context.Friendships.Remove(friendship);
-        await _context.SaveChangesAsync();
+            
+        await _friendshipRepo.DeleteAsync(friendship.Id);
 
         return Result.Success();
     }
@@ -144,12 +92,9 @@ public class FriendshipService : IFriendshipService
         if (senderId == receiverId)
             return Result.Failure(new Error("AgurmentException", "senderId is recieverId must not the same id"));
 
-        var existingFriendship = await _context.Friendships
-            .FirstOrDefaultAsync(f =>
-                (f.SenderId == senderId && f.ReceiverId == receiverId) ||
-                (f.SenderId == receiverId && f.ReceiverId == senderId));
+        var status = await _friendshipRepo.GetFriendshipStatusAsync(senderId, receiverId);
 
-        if (existingFriendship is not null)
+        if (status.HasValue)
             return Result.Failure(new Error("FriendshipExist", "Friendship already exist"));
 
         var friendship = new Friendship()
@@ -160,8 +105,7 @@ public class FriendshipService : IFriendshipService
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.Friendships.Add(friendship);
-        await _context.SaveChangesAsync();
+        await _friendshipRepo.AddAsync(friendship);
 
         // Send notification:
         await _notificationService.CreateNotificationAsync(
