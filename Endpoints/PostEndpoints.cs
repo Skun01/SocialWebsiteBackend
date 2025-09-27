@@ -1,5 +1,6 @@
 using System;
 using System.Security.Claims;
+using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using SocialWebsite.DTOs.Comment;
 using SocialWebsite.DTOs.Post;
@@ -30,9 +31,14 @@ public static class PostEndpoints
         group.MapPost("/", async (
             [FromBody] CreatePostRequest request,
             IPostService postService,
-            HttpContext context
+            HttpContext context,
+            IValidator<CreatePostRequest> validator
         ) =>
         {
+            var validationResult = await validator.ValidateAsync(request);
+            if (!validationResult.IsValid)
+                return Results.ValidationProblem(validationResult.ToDictionary());
+
             var currentUserId = context.GetCurrentUserId();
             if (currentUserId is null)
                 return Results.Unauthorized();
@@ -86,9 +92,14 @@ public static class PostEndpoints
             Guid postId,
             UpdatePostRequest request,
             IPostService postService,
-            HttpContext context
+            HttpContext context,
+            IValidator<UpdatePostRequest> validator
         ) =>
         {
+            var validationResult = await validator.ValidateAsync(request);
+            if (!validationResult.IsValid)
+                return Results.ValidationProblem(validationResult.ToDictionary());
+
             var currentUserId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (currentUserId is null)
                 return Results.BadRequest("Validate token is invalid");

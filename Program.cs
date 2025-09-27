@@ -44,6 +44,9 @@ builder.Services.AddCors(option =>
 // SignalR service
 builder.Services.AddSignalR();
 
+// IMemoryCache service
+builder.Services.AddMemoryCache();
+
 // Repository Register
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
@@ -54,6 +57,7 @@ builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<IFriendshipRepository, FriendshipRepository>();
 builder.Services.AddScoped<IChatRepository, ChatRepository>();
+builder.Services.AddSingleton<ICacheService, LocalCacheService>();
 
 
 // Register all valiators for DTOs
