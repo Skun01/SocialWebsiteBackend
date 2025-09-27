@@ -11,4 +11,6 @@ public class Friendship
     public FriendshipStatus Status { set; get; } = FriendshipStatus.Pending;
     public virtual User Sender { set; get; } = null!;
     public virtual User Receiver { set; get; } = null!;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
 }
