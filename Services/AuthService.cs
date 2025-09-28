@@ -21,17 +21,20 @@ public class AuthService : IAuthService
     private readonly ITokenService _tokenService;
     private readonly LinkGenerator _linkGenerator;
     private readonly IEmailSenderService _emailSender;
+    private readonly IEmailTemplateService _emailTemplateService;
     private readonly IConfiguration _config;
     private readonly IPasswordResetTokenRepository _passwordResetTokenRepo;
     public AuthService(IUserRepository userRepository, IPasswordHasher<User> passwordHasher,
         ITokenService tokenService, LinkGenerator linkGenerator, IEmailSenderService emailSenderService,
-        IConfiguration configuration, IPasswordResetTokenRepository passwordResetTokenRepository)
+        IEmailTemplateService emailTemplateService, IConfiguration configuration, 
+        IPasswordResetTokenRepository passwordResetTokenRepository)
     {
         _userRepo = userRepository;
         _passwordHasher = passwordHasher;
         _tokenService = tokenService;
         _linkGenerator = linkGenerator;
         _emailSender = emailSenderService;
+        _emailTemplateService = emailTemplateService;
         _config = configuration;
         _passwordResetTokenRepo = passwordResetTokenRepository;
     }
@@ -85,9 +88,17 @@ public class AuthService : IAuthService
             endpointName,
             new { token }
         );
-        var subject = "Confirm your account";
-        var body = $"<p>Please confirm your {newUser.Username} account by <a href=\"{callbackUrl}\">clicking here</a>.</p>";
-        await _emailSender.SendEmailAsync(newUser.Email, subject, body);
+        
+        string emailTemplate = _emailTemplateService.GetEmailConfirmationTemplate(
+            newUser.Username,
+            callbackUrl!
+        );
+        
+        await _emailSender.SendEmailAsync(
+            newUser.Email,
+            subject: "Confirm Your Email - Social Website",
+            htmlMessage: emailTemplate
+        );
 
         return Result.Success();
     }
@@ -124,14 +135,17 @@ public class AuthService : IAuthService
         await _passwordResetTokenRepo.AddAsync(passwordResetToken);
 
         string resetUrl = $"{_config["Frontend:BaseUrl"]}/reset-password?id={publicId}&token={secretToken}";
-        Console.WriteLine(resetUrl);
-        await _emailSender.SendEmailAsync(request.Email,
-            subject: "Reset your password",
-            htmlMessage: $"""
-                       Hello {user.Username}! My name is thaitruong! Click the link to reset your password. 
-                       This link expires in {expiresMinutes} Minutes.<br/>
-                       <a href="{resetUrl}">Reset Password</a>
-                       """
+        
+        string emailTemplate = _emailTemplateService.GetPasswordResetTemplate(
+            user.Username, 
+            resetUrl, 
+            expiresMinutes
+        );
+        
+        await _emailSender.SendEmailAsync(
+            request.Email,
+            subject: "Reset Your Password - Social Website",
+            htmlMessage: emailTemplate
         );
 
         return Result.Success();
