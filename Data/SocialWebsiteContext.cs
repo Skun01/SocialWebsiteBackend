@@ -125,7 +125,7 @@ public class SocialWebsiteContext : DbContext
                 .HasForeignKey(cp => cp.ConversationId);
             entity
                 .HasOne(cp => cp.User)
-                .WithMany()
+                .WithMany(u => u.ConversationParticipants)
                 .HasForeignKey(cp => cp.UserId);
         });
 
@@ -139,7 +139,7 @@ public class SocialWebsiteContext : DbContext
 
             entity
                 .HasOne(m => m.Sender)
-                .WithMany()
+                .WithMany(u => u.SentMessages)
                 .HasForeignKey(m => m.SenderId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
@@ -148,18 +148,28 @@ public class SocialWebsiteContext : DbContext
         {
             entity
                 .HasKey(mrs => new { mrs.MessageId, mrs.UserId });
+            entity
+                .HasOne(mrs => mrs.Message)
+                .WithMany(m => m.ReadByUsers)
+                .HasForeignKey(mrs => mrs.MessageId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity
+                .HasOne(mrs => mrs.User)
+                .WithMany(u => u.MessageReadStatuses)
+                .HasForeignKey(mrs => mrs.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Notification>(entity =>
         {
             entity
                 .HasOne(n => n.Recipient)
-                .WithMany()
+                .WithMany(u => u.ReceivedNotifications)
                 .HasForeignKey(n => n.RecipientUserId)
                 .OnDelete(DeleteBehavior.Cascade);
             entity
                 .HasOne(n => n.TriggeredByUser)
-                .WithMany()
+                .WithMany(u => u.TriggeredNotifications)
                 .HasForeignKey(n => n.TriggeredByUserId)
                 .OnDelete(DeleteBehavior.Restrict);
         });
