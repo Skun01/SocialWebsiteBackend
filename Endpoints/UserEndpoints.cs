@@ -49,7 +49,7 @@ public static class UserEndpoints
         {
             var result = await userService.GetAllUserAsync();
             return result.ToApiResponse("Users retrieved successfully");
-        }).RequireModerator();
+        }).RequireModerator(); 
 
         group.MapPut("/{id:guid}", async (
             Guid id,
