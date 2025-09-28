@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Security.Claims;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using SocialWebsite.DTOs.User;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Extensions;
+using SocialWebsite.Shared;
+using System.Diagnostics;
 
 namespace SocialWebsite.Endpoints;
 
@@ -24,18 +27,11 @@ public static class UserEndpoints
             var validationResult = await validator.ValidateAsync(request);
             if (!validationResult.IsValid)
             {
-                var errors = validationResult.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(
-                        g => g.Key,
-                        g => g.Select(e => e.ErrorMessage).ToArray()
-                    );
-                return Results.ValidationProblem(errors);
+                return validationResult.ToValidationErrorResponse();
             }
 
             var result = await userService.CreateUserAsync(request);
-            return result.IsSuccess ? Results.CreatedAtRoute("GetUserById", new { id = result.Value.Id }, result.Value)
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse("User created successfully");
         }).RequireAdmin();
 
         group.MapGet("/{id:guid}", async (
@@ -44,7 +40,7 @@ public static class UserEndpoints
         ) =>
         {
             var result = await userService.GetUserByIdAsync(id);
-            return result.IsSuccess ? Results.Ok(result.Value) : Results.NotFound(result.Error);
+            return result.ToApiResponse();
         }).WithName("GetUserById");
 
         group.MapGet("/", async (
@@ -52,7 +48,7 @@ public static class UserEndpoints
         ) =>
         {
             var result = await userService.GetAllUserAsync();
-            return Results.Ok(result.Value);
+            return result.ToApiResponse("Users retrieved successfully");
         }).RequireModerator();
 
         group.MapPut("/{id:guid}", async (
@@ -63,18 +59,13 @@ public static class UserEndpoints
         ) =>
         {
             var validationResult = await validator.ValidateAsync(request);
-            if (validationResult.IsValid)
+            if (!validationResult.IsValid)
             {
-                var result = await userService.UpdateUserAsync(id, request);
-                return result.IsSuccess ? Results.NoContent() : Results.BadRequest(result.Error);
+                return validationResult.ToValidationErrorResponse();
             }
-            var errors = validationResult.Errors
-                .GroupBy(e => e.PropertyName)
-                .ToDictionary(
-                    g => g.Key,
-                    g => g.Select(e => e.ErrorMessage).ToArray()
-                );
-            return Results.ValidationProblem(errors);
+
+            var result = await userService.UpdateUserAsync(id, request);
+            return result.ToApiResponse("User updated successfully");
         }).RequireAdmin();
 
         group.MapDelete("/{id:guid}", async (
@@ -83,9 +74,7 @@ public static class UserEndpoints
         ) =>
         {
             var result = await userService.DeleteUserAsync(id);
-            return result.IsSuccess
-                ? Results.NoContent()
-                : Results.NotFound(result.Error);
+            return result.ToApiResponse("User deleted successfully");
         }).RequireAdmin();
 
         group.MapPost("/{userId:guid}/avatar", async (
@@ -95,9 +84,17 @@ public static class UserEndpoints
         ) =>
         {
             var result = await userService.UploadUserAvatarAsync(userId, file);
-            return result.IsSuccess
-                ? Results.Ok(new { url = result.Value })
-                : Results.BadRequest(result.Error);
+            if (result.IsSuccess)
+            {
+                var response = ApiResponse<object>.SuccessResponse(
+                    new { url = result.Value }, 
+                    "Avatar uploaded successfully"
+                );
+                response.TraceId = Activity.Current?.Id;
+                return Results.Ok(response);
+            }
+            
+            return result.ToApiResponse();
         }).DisableAntiforgery().RequireAuthorization();
 
         group.MapGet("/search", async (
@@ -110,9 +107,7 @@ public static class UserEndpoints
             Guid? currentUserId = Guid.TryParse(userId, out var parsed) ? parsed : null;
 
             var result = await userService.SearchUserAsync(query, currentUserId);
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : Results.BadRequest(result.Error);
+            return result.ToPaginatedApiResponse("Search completed successfully");
         });
         return group;
     }

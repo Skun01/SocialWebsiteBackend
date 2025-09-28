@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Security.Claims;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
@@ -8,6 +9,7 @@ using SocialWebsite.Extensions;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Services;
 using SocialWebsite.Shared;
+using System.Diagnostics;
 
 namespace SocialWebsite.Endpoints;
 
@@ -23,9 +25,8 @@ public static class PostEndpoints
             IPostService postService
         ) =>
         {
-
             var result = await postService.GetPostsAsync(query);
-            return Results.Ok(result.Value);
+            return result.ToCursorApiResponse("Posts retrieved successfully");
         });
 
         group.MapPost("/", async (
@@ -37,16 +38,18 @@ public static class PostEndpoints
         {
             var validationResult = await validator.ValidateAsync(request);
             if (!validationResult.IsValid)
-                return Results.ValidationProblem(validationResult.ToDictionary());
+                return validationResult.ToValidationErrorResponse();
 
             var currentUserId = context.GetCurrentUserId();
             if (currentUserId is null)
-                return Results.Unauthorized();
+            {
+                var unauthorizedResponse = ApiResponse<object>.UnauthorizedResponse("User not authenticated");
+                unauthorizedResponse.TraceId = Activity.Current?.Id;
+                return Results.Json(unauthorizedResponse, statusCode: 401);
+            }
                 
             var result = await postService.CreatePostAsync(request, (Guid)currentUserId);
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Post created successfully");
         }).RequireAuthorization();
 
         group.MapGet("/{postId:guid}", async (
@@ -57,12 +60,14 @@ public static class PostEndpoints
         {
             var currentUserId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (currentUserId is null)
-                return Results.BadRequest("Validate token is invalid");
+            {
+                var unauthorizedResponse = ApiResponse<object>.UnauthorizedResponse("User not authenticated");
+                unauthorizedResponse.TraceId = Activity.Current?.Id;
+                return Results.Json(unauthorizedResponse, statusCode: 401);
+            }
 
             var result = await postService.GetPostByIdAsync(postId, Guid.Parse(currentUserId));
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse();
         });
 
         group.MapDelete("/{postId:guid}", async (
@@ -71,9 +76,7 @@ public static class PostEndpoints
         ) =>
         {
             var result = await postService.DeletePostAsync(postId);
-            return result.IsSuccess
-                ? Results.NoContent()
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Post deleted successfully");
         });
 
         group.MapPut("/{postId:guid}/privacy", async (
@@ -83,9 +86,7 @@ public static class PostEndpoints
         ) =>
         {
             var result = await postService.UpdatePostPrivacyAsync(postId, request);
-            return result.IsSuccess
-                ? Results.NoContent()
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Post privacy updated successfully");
         });
 
         group.MapPut("/{postId:guid}", async (
@@ -98,16 +99,18 @@ public static class PostEndpoints
         {
             var validationResult = await validator.ValidateAsync(request);
             if (!validationResult.IsValid)
-                return Results.ValidationProblem(validationResult.ToDictionary());
+                return validationResult.ToValidationErrorResponse();
 
             var currentUserId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (currentUserId is null)
-                return Results.BadRequest("Validate token is invalid");
+            {
+                var unauthorizedResponse = ApiResponse<object>.UnauthorizedResponse("User not authenticated");
+                unauthorizedResponse.TraceId = Activity.Current?.Id;
+                return Results.Json(unauthorizedResponse, statusCode: 401);
+            }
                 
             var result = await postService.UpdatePostAsync(postId, request, Guid.Parse(currentUserId));
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Post updated successfully");
         });
 
         group.MapPost("/{postId:guid}/files", async (
@@ -117,9 +120,7 @@ public static class PostEndpoints
         ) =>
         {
             var result = await postService.AddPostFileAsync(postId, files);
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Files added to post successfully");
         }).DisableAntiforgery();
 
         group.MapDelete("/{postId:guid}/files/{postFileId:guid}", async (
@@ -128,9 +129,7 @@ public static class PostEndpoints
             IPostService postService) =>
         {
             var result = await postService.DeletePostFileAsync(postId, postFileId);
-            return result.IsSuccess
-                ? Results.NoContent()
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse("File removed from post successfully");
         });
 
         group.MapPost("/{postId:guid}/likes", async (
@@ -140,8 +139,7 @@ public static class PostEndpoints
         {
             var userId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
             var result = await postService.LikePostAsync(postId, Guid.Parse(userId!));
-            return result.IsSuccess ? Results.NoContent()
-                                    : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Post liked successfully");
         }).RequireAuthorization();
 
         group.MapDelete("/{postId:guid}/likes", async (
@@ -151,8 +149,7 @@ public static class PostEndpoints
         {
             var userId = ctx.User.FindFirstValue(ClaimTypes.NameIdentifier);
             var result = await postService.UnlikePostAsync(postId, Guid.Parse(userId!));
-            return result.IsSuccess ? Results.NoContent()
-                                    : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Post unliked successfully");
         }).RequireAuthorization();
 
         group.MapGet("/{postId:guid}/comments", async (
@@ -161,7 +158,7 @@ public static class PostEndpoints
         ) =>
         {
             var result = await commentService.GetRootCommentByPostIdAsync(postId);
-            return Results.Ok(result.Value);
+            return result.ToApiResponse("Comments retrieved successfully");
         });
 
         group.MapPost("/{postId:guid}/comments", async(
@@ -173,12 +170,14 @@ public static class PostEndpoints
         {
             var userId = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userId is null || !Guid.TryParse(userId.ToString(), out Guid currentUserId))
-                return Results.BadRequest("User Id not found");
+            {
+                var unauthorizedResponse = ApiResponse<object>.UnauthorizedResponse("User not authenticated");
+                unauthorizedResponse.TraceId = Activity.Current?.Id;
+                return Results.Json(unauthorizedResponse, statusCode: 401);
+            }
 
             var result = await commentService.CreateNewCommentAsync(postId, currentUserId, request);
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Comment created successfully");
         }).RequireAuthorization();
 
         return group;

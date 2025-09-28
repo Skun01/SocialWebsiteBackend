@@ -1,10 +1,11 @@
 using System;
+using System.Collections.Generic;
 
 namespace SocialWebsite.Shared;
 
 public class PageList<T>
 {
-    public int CurrentPage { get; private set; }
+    public int PageNumber { get; private set; }
     public int TotalPages { get; private set; }
     public int TotalCount { get; private set; }  
     public int PageSize { get; private set; }
@@ -13,7 +14,7 @@ public class PageList<T>
     {
         Items = items;
         TotalCount = totalCount;
-        CurrentPage = pageNumber;
+        PageNumber = pageNumber;
         PageSize = pageSize;
         TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
     }

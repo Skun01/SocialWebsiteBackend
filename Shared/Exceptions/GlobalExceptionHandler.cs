@@ -3,6 +3,8 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
+using SocialWebsite.Shared;
+using System.Diagnostics;
 
 namespace SocialWebsite.Shared.Exceptions;
 
@@ -10,31 +12,50 @@ public class GlobalExceptionHandler : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
-        var problemDetail = new ProblemDetails
+        var traceId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
+        
+        var response = exception switch
         {
-            Status = StatusCodes.Status500InternalServerError,
-            Title = "System error",
-            Detail = "An unexpected error occured.",
-            Instance = httpContext.Request.Path
+            BadHttpRequestException => ApiResponse.ErrorResponse(
+                "Invalid request format", 
+                new List<string> { "The request body is not valid" }, 
+                400),
+            JsonException => ApiResponse.ErrorResponse(
+                "Invalid JSON format", 
+                new List<string> { "The request body contains invalid JSON" }, 
+                400),
+            UnauthorizedAccessException => ApiResponse.ErrorResponse(
+                "Unauthorized access", 
+                new List<string> { "You are not authorized to access this resource" }, 
+                401),
+            ArgumentException argEx => ApiResponse.ErrorResponse(
+                "Invalid argument", 
+                new List<string> { argEx.Message }, 
+                400),
+            _ => ApiResponse.ErrorResponse(
+                "An unexpected error occurred", 
+                new List<string> { "Internal server error" }, 
+                500)
         };
 
-        // handle jsonException
-        if (exception is BadHttpRequestException || exception is JsonException)
-        {
-            problemDetail.Status = StatusCodes.Status400BadRequest;
-            problemDetail.Title = "Invalid JSON in request body";
-            problemDetail.Detail = "The request body is not a valid JSON payload.";
-        }
+        response.TraceId = traceId;
 
-        var traceId = httpContext.TraceIdentifier;
-        problemDetail.Extensions["traceId"] = traceId;
-        Log.ForContext("traceId", traceId)
-           .ForContext("path", httpContext.Request.Path)
-           .Error(exception.Message, "unhandled exception");
+        // Structured logging
+        Log.ForContext("TraceId", traceId)
+           .ForContext("Path", httpContext.Request.Path)
+           .ForContext("Method", httpContext.Request.Method)
+           .ForContext("StatusCode", response.StatusCode)
+           .ForContext("UserAgent", httpContext.Request.Headers.UserAgent.ToString())
+           .ForContext("RemoteIpAddress", httpContext.Connection.RemoteIpAddress?.ToString())
+           .ForContext("UserId", httpContext.User?.Identity?.Name)
+           .Error(exception, "Unhandled exception occurred");
         
-        httpContext.Response.StatusCode = problemDetail.Status.Value;
-        await httpContext.Response.WriteAsJsonAsync(problemDetail, cancellationToken);
+        httpContext.Response.StatusCode = response.StatusCode ?? 500;
+        httpContext.Response.ContentType = "application/json";
+        await httpContext.Response.WriteAsync(
+            System.Text.Json.JsonSerializer.Serialize(response), 
+            cancellationToken);
+        
         return true;
-
     }
 }

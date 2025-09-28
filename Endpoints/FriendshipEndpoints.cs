@@ -1,6 +1,9 @@
 using System;
+using System.Collections.Generic;
 using SocialWebsite.Extensions;
 using SocialWebsite.Interfaces.Services;
+using SocialWebsite.Shared;
+using System.Diagnostics;
 
 namespace SocialWebsite.Endpoints;
 
@@ -22,7 +25,7 @@ public static class FriendshipEndpoints
                 return Results.Unauthorized();
             
             var result = await friendshipService.GetFriendsAsync((Guid)userId);
-            return Results.Ok(result.Value);
+            return result.ToApiResponse("Friends retrieved successfully");
         });
 
         group.MapGet("/requests/received", async (HttpContext context, IFriendshipService friendshipService) =>
@@ -32,7 +35,7 @@ public static class FriendshipEndpoints
                 return Results.Unauthorized();
                 
             var result = await friendshipService.GetReceivedFriendRequestsAsync((Guid)userId);
-            return Results.Ok(result.Value);
+            return result.ToApiResponse("Received friend requests retrieved successfully");
         });
 
         group.MapGet("/requests/sent", async (HttpContext context, IFriendshipService friendshipService) =>
@@ -42,7 +45,7 @@ public static class FriendshipEndpoints
                 return Results.Unauthorized();
 
             var result = await friendshipService.GetSentFriendRequestsAsync((Guid)userId);
-            return Results.Ok(result.Value);
+            return result.ToApiResponse("Sent friend requests retrieved successfully");
         });
 
         group.MapPost("/request/{receiverId:guid}", async (
@@ -56,9 +59,7 @@ public static class FriendshipEndpoints
                 return Results.Unauthorized();
 
             var result = await friendshipService.SendFriendRequestAsync((Guid)senderId, receiverId);
-            return result.IsSuccess
-                ? Results.Ok("Friend request sent.") 
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Friend request sent successfully");
         });
 
         group.MapPut("/accept/{senderId:guid}", async (
@@ -72,9 +73,7 @@ public static class FriendshipEndpoints
                 return Results.Unauthorized();
 
             var result = await friendshipService.AcceptFriendRequestAsync(senderId, (Guid)receiverId);
-            return result.IsSuccess
-                ? Results.Ok("Friend request accepted.") 
-                : Results.NotFound(result.Error);
+            return result.ToApiResponse("Friend request accepted successfully");
         });
 
         group.MapDelete("/decline/{senderId:guid}", async (Guid senderId, HttpContext context, IFriendshipService friendshipService) =>
@@ -84,9 +83,7 @@ public static class FriendshipEndpoints
                 return Results.Unauthorized();
 
             var result = await friendshipService.DeclineFriendRequestAsync(senderId, (Guid)receiverId);
-            return result.IsSuccess
-                ? Results.NoContent() 
-                : Results.NotFound(result.Error);
+            return result.ToApiResponse("Friend request declined successfully");
         });
 
         group.MapDelete("/{friendId:guid}", async (Guid friendId, HttpContext context, IFriendshipService friendshipService) =>
@@ -95,9 +92,7 @@ public static class FriendshipEndpoints
             if (currentUserId is null)
                 return Results.Unauthorized();
             var result = await friendshipService.RemoveFriendAsync((Guid)currentUserId, friendId);
-            return result.IsSuccess
-                ? Results.NoContent() 
-                : Results.NotFound(result.Error);
+            return result.ToApiResponse("Friend removed successfully");
         });
 
         return group;

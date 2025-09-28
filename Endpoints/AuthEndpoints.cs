@@ -1,10 +1,14 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using SocialWebsite.DTOs.Auth;
 using SocialWebsite.DTOs.User;
 using SocialWebsite.Interfaces.Services;
+using SocialWebsite.Extensions;
+using SocialWebsite.Shared;
+using System.Diagnostics;
 
 namespace SocialWebsite.Endpoints;
 
@@ -19,62 +23,50 @@ public static class AuthEndpoints
             IAuthService authService, IValidator<LoginRequest> validator) =>
         {
             var validationResult = await validator.ValidateAsync(request);
-            if (validationResult.IsValid)
+            if (!validationResult.IsValid)
             {
-                var result = await authService.LoginAsync(request);
-                return result.IsSuccess
-                ? Results.Ok(result.Value) 
-                : Results.BadRequest(result.Error);
+                return validationResult.ToValidationErrorResponse();
             }
 
-            return Results.ValidationProblem(validationResult.ToDictionary());
+            var result = await authService.LoginAsync(request);
+            return result.ToApiResponse("Login successful");
         });
 
         group.MapPost("/register", async (RegisterRequest request, HttpContext httpContext,
             IAuthService authService, IValidator<RegisterRequest> Validator) =>
         {
             var validationResult = await Validator.ValidateAsync(request);
-            if (validationResult.IsValid)
+            if (!validationResult.IsValid)
             {
-                var result = await authService.RegisterAsync(request, httpContext, "ConfirmEmailEndpoint");
-                return result.IsSuccess
-                ? Results.Ok("Register successful, please check email to verify") 
-                : Results.BadRequest(result.Error);
+                return validationResult.ToValidationErrorResponse();
             }
 
-            return Results.ValidationProblem(validationResult.ToDictionary());
+            var result = await authService.RegisterAsync(request, httpContext, "ConfirmEmailEndpoint");
+            return result.ToApiResponse("Registration successful, please check email to verify");
         });
 
         group.MapGet("/confirm-email", async ([FromQuery] string token, IAuthService authService) =>
         {
             var result = await authService.VerifyEmailAsync(token);
-            return result.IsSuccess
-            ? Results.Ok("Verify email successfuly") 
-            : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Email verified successfully");
         }).WithName("ConfirmEmailEndpoint");
 
         group.MapGet("/me", async (HttpContext context, IAuthService authService) =>
         {
             var result = await authService.GetCurrentUserLoginAsync(context);
-            return result.IsSuccess
-            ? Results.Ok(result.Value) 
-            : Results.BadRequest(result.Error);
+            return result.ToApiResponse();
         }).RequireAuthorization();
 
         group.MapPost("/forgot-password", async (ForgotPasswordRequest request, IAuthService authService) =>
         {
             var result = await authService.SendResetPasswordEMailAsync(request);
-            return result.IsSuccess
-                ? Results.Ok("Check your mail to reset password!") 
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Password reset email sent");
         });
 
         group.MapPost("/reset-password", async (ResetPasswordRequest request, IAuthService authService) =>
         {
             var result = await authService.ResetPasswordAsync(request.PublicId, request.Token, request.NewPassword);
-            return result.IsSuccess
-                ? Results.Ok(new { message = "Password has been reset." })
-                : Results.BadRequest(new { error = result.Error });
+            return result.ToApiResponse("Password has been reset successfully");
         });
         
         return group;

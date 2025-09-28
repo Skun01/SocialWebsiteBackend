@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using SocialWebsite.DTOs.Chat;
 using SocialWebsite.Extensions;
 using SocialWebsite.Interfaces.Services;
+using SocialWebsite.Shared;
+using System.Diagnostics;
 
 namespace SocialWebsite.Endpoints;
 
@@ -12,7 +15,8 @@ public static class ChatEndpoints
     public static RouteGroupBuilder MapChatEndpoints(this RouteGroupBuilder app, string routePrefix)
     {
         var group = app.MapGroup(routePrefix)
-            .WithTags("Chat");
+            .WithTags("Chat")
+            .RequireAuthorization();
 
         group.MapPost("/conversations", async (
             CreateConversationRequest request,
@@ -25,9 +29,7 @@ public static class ChatEndpoints
                 return Results.Unauthorized();
 
             var result = await chatService.CreateConversationAsync((Guid)creatorUserId, request);
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Conversation created successfully");
         });
 
         group.MapPost("/conversations/{conversationId:guid}/messages", async (
@@ -41,9 +43,16 @@ public static class ChatEndpoints
             if(senderUserId is null)
                 return Results.Unauthorized();
             var result = await chatService.CreateMessageAsync(conversationId, (Guid)senderUserId, request);
-            return result.IsSuccess
-                ? Results.Created($"/api/chat/messages/{result.Value.Id}", result.Value)
-                : Results.BadRequest(result.Error);
+            if (result.IsSuccess)
+            {
+                var response = ApiResponse<object>.SuccessResponse(
+                    result.Value,
+                    "Message created successfully"
+                );
+                response.TraceId = Activity.Current?.Id;
+                return Results.Ok(response);
+            }
+            return result.ToApiResponse();
         });
 
         group.MapGet("/conversations/{conversationId:guid}/messages", async (
@@ -57,9 +66,7 @@ public static class ChatEndpoints
             if(currentUserId is null)
                 return Results.Unauthorized();
             var result = await chatService.GetConversationMessagesAsync(conversationId, (Guid)currentUserId, query);
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : Results.BadRequest(result.Error);
+            return result.ToCursorApiResponse("Messages retrieved successfully");
         });
 
         group.MapGet("/conversations", async (
@@ -71,9 +78,7 @@ public static class ChatEndpoints
             if(currentUserId is null)
                 return Results.Unauthorized();
             var result = await chatService.GetUserConversationsAsync((Guid)currentUserId);
-            return result.IsSuccess
-                ? Results.Ok(result.Value)
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse("Conversations retrieved successfully");
         });
 
         return group;

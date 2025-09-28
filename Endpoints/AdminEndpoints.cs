@@ -1,8 +1,12 @@
+using System;
+using System.Collections.Generic;
 using Microsoft.AspNetCore.Mvc;
 using SocialWebsite.Extensions;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.DTOs.User;
 using SocialWebsite.Shared.Enums;
+using SocialWebsite.Shared;
+using System.Diagnostics;
 
 namespace SocialWebsite.Endpoints;
 
@@ -22,9 +26,7 @@ public static class AdminEndpoints
         ) =>
         {
             var result = await userService.SetUserRoleAsync(userId, request.Role);
-            return result.IsSuccess
-                ? Results.NoContent()
-                : Results.BadRequest(result.Error);
+            return result.ToApiResponse($"User role updated to {request.Role} successfully");
         });
 
         return group;
