@@ -7,6 +7,7 @@ using SocialWebsite.Interfaces.Repositories;
 using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Mapping;
 using SocialWebsite.Shared;
+using SocialWebsite.Shared.Enums;
 
 namespace SocialWebsite.Services;
 
@@ -133,5 +134,20 @@ public class UserService : IUserService
         {
             return Result.Failure<string>(new Error("UploadAvatar.Error", $"Something wrong when upload file: {ex.Message}"));
         }
+    }
+
+    public async Task<Result> SetUserRoleAsync(Guid userId, UserRole role)
+    {
+        // Validate user exists
+        var user = await _userRepo.GetByIdAsync(userId);
+        if (user is null)
+            return Result.Failure(new Error("User.NotFound", "User not found!"));
+
+        // No-op if same role
+        if (user.Role == role)
+            return Result.Success();
+
+        await _userRepo.UpdateUserRoleAsync(userId, role);
+        return Result.Success();
     }
 }

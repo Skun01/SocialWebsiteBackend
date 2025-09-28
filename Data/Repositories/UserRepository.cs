@@ -5,6 +5,7 @@ using SocialWebsite.Entities;
 using SocialWebsite.Interfaces.Repositories;
 using SocialWebsite.Mapping;
 using SocialWebsite.Shared;
+using SocialWebsite.Shared.Enums;
 
 namespace SocialWebsite.Data.Repositories;
 
@@ -111,5 +112,15 @@ public class UserRepository : IUserRepository
             .ToListAsync();
 
         return new PageList<UserResponse>(items, total, Math.Max(1, query.PageNumber), query.PageSize);
+    }
+
+    public async Task UpdateUserRoleAsync(Guid userId, UserRole role)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null)
+            return;
+        user.Role = role;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
     }
 }

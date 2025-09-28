@@ -1,6 +1,7 @@
 using System;
 using SocialWebsite.DTOs.User;
 using SocialWebsite.Entities;
+using SocialWebsite.Shared.Enums;
 
 namespace SocialWebsite.Mapping;
 
@@ -17,7 +18,8 @@ public static class UserMapping
             DateOfBirth: user.DateOfBirth,
             Gender: user.Gender,
             ProfilePictureUrl: user.ProfilePictureUrl,
-            IsEmailVerified: user.IsEmailVerified
+            IsEmailVerified: user.IsEmailVerified,
+            Role: user.Role
         );
     }
 
@@ -36,6 +38,7 @@ public static class UserMapping
             ProfilePictureUrl = request.ProfilePictureUrl,
             IsEmailVerified = false,
             IsActive = false,
+            Role = UserRole.User
         };
     }
 
@@ -54,6 +57,7 @@ public static class UserMapping
             ProfilePictureUrl = request.ProfilePictureUrl,
             IsEmailVerified = false,
             IsActive = false,
+            Role = UserRole.User
         };
     }
 }

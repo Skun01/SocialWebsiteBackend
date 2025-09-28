@@ -20,6 +20,7 @@ public class User
     public string LastName { get; set; } = string.Empty;
     public DateTime? DateOfBirth { get; set; }
     public Gender Gender { get; set; }
+    public UserRole Role { get; set; } = UserRole.User;
     public string? ProfilePictureUrl { get; set; }
     public bool IsEmailVerified { get; set; }
     public bool IsActive { get; set; }

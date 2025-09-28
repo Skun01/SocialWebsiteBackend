@@ -11,5 +11,6 @@ public record class UserResponse(
     DateTime? DateOfBirth,
     Gender Gender,
     string? ProfilePictureUrl,
-    bool IsEmailVerified
+    bool IsEmailVerified,
+    UserRole Role
 );

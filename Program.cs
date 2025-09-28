@@ -17,6 +17,9 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using SocialWebsite.Hubs;
+using SocialWebsite.Authorization;
+using Microsoft.AspNetCore.Authorization;
+using SocialWebsite.Swagger;
 //BUILDER
 var builder = WebApplication.CreateBuilder(args);
 // Init serilog
@@ -105,6 +108,8 @@ builder.Services.AddSwaggerGen(options =>
             new string[]{ }
         }
     });
+    // Hiển thị yêu cầu Authorize/Role
+    options.OperationFilter<AuthorizationRequirementsOperationFilter>();
 });
 
 // converter global from enum to string and versal
@@ -136,7 +141,20 @@ builder.Services.AddAuthentication(options =>
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
         };
     });
-builder.Services.AddAuthorization();
+// Authorization với role-based policies
+builder.Services.AddAuthorization(options =>
+{
+    // Tạo policies cho từng role
+    options.AddPolicy("RequireRole_User", policy => 
+        policy.Requirements.Add(new RoleRequirement(SocialWebsite.Shared.Enums.UserRole.User)));
+    options.AddPolicy("RequireRole_Moderator", policy => 
+        policy.Requirements.Add(new RoleRequirement(SocialWebsite.Shared.Enums.UserRole.Moderator)));
+    options.AddPolicy("RequireRole_Admin", policy => 
+        policy.Requirements.Add(new RoleRequirement(SocialWebsite.Shared.Enums.UserRole.Admin)));
+});
+
+// Đăng ký authorization handler
+builder.Services.AddScoped<IAuthorizationHandler, RoleAuthorizationHandler>();
 
 //APPLICATION
 var app = builder.Build();
@@ -165,4 +183,5 @@ version1.MapCommentEndpoints("/comments");
 version1.MapChatEndpoints("/chat");
 version1.MapNotificationEndpoints("/notifications");
 version1.MapFriendShipEndpoints("/friendships");
+version1.MapAdminEndpoints("/admin");
 app.Run();

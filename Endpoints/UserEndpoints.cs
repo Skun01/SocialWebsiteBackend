@@ -4,6 +4,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using SocialWebsite.DTOs.User;
 using SocialWebsite.Interfaces.Services;
+using SocialWebsite.Extensions;
 
 namespace SocialWebsite.Endpoints;
 
@@ -35,7 +36,7 @@ public static class UserEndpoints
             var result = await userService.CreateUserAsync(request);
             return result.IsSuccess ? Results.CreatedAtRoute("GetUserById", new { id = result.Value.Id }, result.Value)
                 : Results.BadRequest(result.Error);
-        });
+        }).RequireAdmin();
 
         group.MapGet("/{id:guid}", async (
             Guid id,
@@ -52,7 +53,7 @@ public static class UserEndpoints
         {
             var result = await userService.GetAllUserAsync();
             return Results.Ok(result.Value);
-        });
+        }).RequireModerator();
 
         group.MapPut("/{id:guid}", async (
             Guid id,
@@ -74,7 +75,7 @@ public static class UserEndpoints
                     g => g.Select(e => e.ErrorMessage).ToArray()
                 );
             return Results.ValidationProblem(errors);
-        });
+        }).RequireAdmin();
 
         group.MapDelete("/{id:guid}", async (
             Guid id,
@@ -85,9 +86,9 @@ public static class UserEndpoints
             return result.IsSuccess
                 ? Results.NoContent()
                 : Results.NotFound(result.Error);
-        });
+        }).RequireAdmin();
 
-        group.MapPost("/users/{userId:guid}/avatar", async (
+        group.MapPost("/{userId:guid}/avatar", async (
             Guid userId,
             IFormFile file,
             IUserService userService
@@ -97,9 +98,9 @@ public static class UserEndpoints
             return result.IsSuccess
                 ? Results.Ok(new { url = result.Value })
                 : Results.BadRequest(result.Error);
-        }).DisableAntiforgery();
+        }).DisableAntiforgery().RequireAuthorization();
 
-        group.MapGet("/users/search", async (
+        group.MapGet("/search", async (
             [AsParameters] UserQueryParameters query,
             IUserService userService,
             HttpContext context

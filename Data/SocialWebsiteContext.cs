@@ -31,6 +31,12 @@ public class SocialWebsiteContext : DbContext
                 .HasMaxLength(20)
                 .IsRequired();
             userEntity
+                .Property(u => u.Role)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .HasDefaultValue(UserRole.User)
+                .IsRequired();
+            userEntity
                 .Property(u => u.IsEmailVerified)
                 .HasDefaultValue(false);
             userEntity
