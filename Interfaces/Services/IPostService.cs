@@ -9,6 +9,7 @@ public interface IPostService
     Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest request, Guid currentUserId);
     Task<Result<PostResponse>> GetPostByIdAsync(Guid postId, Guid currentUserId);
     Task<Result<CursorList<PostResponse>>> GetPostsAsync(PostQueryParameters query);
+    Task<Result<CursorList<PostResponse>>> GetPostsByUserIdAsync(Guid userId, PostQueryParameters query, Guid? currentUserId = null);
     Task<Result> UpdatePostPrivacyAsync(Guid postId, ChangePostPrivacyRequest request);
     Task<Result<PostResponse>> UpdatePostAsync(Guid postId, UpdatePostRequest request, Guid currentUserId);
     Task<Result<IEnumerable<PostFileResponse>>> AddPostFileAsync(Guid postId, IFormFileCollection files);

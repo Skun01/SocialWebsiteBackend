@@ -13,4 +13,5 @@ public interface IFriendshipService
     Task<Result<IEnumerable<FriendshipResponse>>> GetFriendsAsync(Guid userId);
     Task<Result<IEnumerable<FriendshipResponse>>> GetReceivedFriendRequestsAsync(Guid userId);
     Task<Result<IEnumerable<FriendshipResponse>>> GetSentFriendRequestsAsync(Guid userId);
+    Task<Result<FriendshipStatusResponse>> GetFriendshipStatusAsync(Guid currentUserId, Guid targetUserId);
 }

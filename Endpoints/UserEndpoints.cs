@@ -8,6 +8,7 @@ using SocialWebsite.Interfaces.Services;
 using SocialWebsite.Extensions;
 using SocialWebsite.Shared;
 using System.Diagnostics;
+using SocialWebsite.DTOs.Post;
 
 namespace SocialWebsite.Endpoints;
 
@@ -109,6 +110,21 @@ public static class UserEndpoints
             var result = await userService.SearchUserAsync(query, currentUserId);
             return result.ToPaginatedApiResponse("Search completed successfully");
         });
+
+        group.MapGet("/{userId:guid}/posts", async (
+            Guid userId,
+            [AsParameters] PostQueryParameters query,
+            IPostService postService,
+            HttpContext context
+        ) =>
+        {
+            var currentUserIdStr = context.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            Guid? currentUserId = Guid.TryParse(currentUserIdStr, out var parsed) ? parsed : null;
+
+            var result = await postService.GetPostsByUserIdAsync(userId, query, currentUserId);
+            return result.ToCursorApiResponse("User posts retrieved successfully");
+        });
+
         return group;
     }
 }

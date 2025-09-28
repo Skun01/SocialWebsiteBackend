@@ -95,6 +95,20 @@ public static class FriendshipEndpoints
             return result.ToApiResponse("Friend removed successfully");
         });
 
+        group.MapGet("/status/{userId:guid}", async (
+            Guid userId,
+            HttpContext context,
+            IFriendshipService friendshipService
+        ) =>
+        {
+            var currentUserId = context.GetCurrentUserId();
+            if (currentUserId is null)
+                return Results.Unauthorized();
+
+            var result = await friendshipService.GetFriendshipStatusAsync((Guid)currentUserId, userId);
+            return result.ToApiResponse("Friendship status retrieved successfully");
+        });
+
         return group;
     }
 }

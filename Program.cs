@@ -79,6 +79,7 @@ builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IFriendshipService, FriendshipService>();
+builder.Services.AddScoped<IFeedService, FeedService>();
 // Database seeder
 builder.Services.AddScoped<IDatabaseSeeder, DatabaseSeeder>();
 // Password hasher
@@ -159,6 +160,8 @@ builder.Services.AddAuthorization(options =>
 // Đăng ký authorization handler
 builder.Services.AddScoped<IAuthorizationHandler, RoleAuthorizationHandler>();
 
+
+
 //APPLICATION
 var app = builder.Build();
 
@@ -170,12 +173,34 @@ using (var scope = app.Services.CreateScope())
 }
 
 // Middleware:
-app.UseStaticFiles();
+// Configure static files serving
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot")),
+    RequestPath = ""
+});
+
+// Additional static files configuration for images and assets
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images")),
+    RequestPath = "/images"
+});
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(
+        Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "PostAsset")),
+    RequestPath = "/PostAsset"
+});
+
+app.UseCors("react");
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseSeriRequestLog();
 app.UseExceptionHandler();
-app.UseCors("react");
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -184,6 +209,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapHub<ChatHub>("/chatHub");
 app.MapHub<NotificationHub>("/notificationHub");
+app.MapHub<FeedHub>("/feedHub");
 
 //ENDPOINT
 var version1 = app.MapGroup("v1");

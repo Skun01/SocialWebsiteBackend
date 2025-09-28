@@ -18,9 +18,10 @@ public class PostService : IPostService
     private readonly IFileService _fileService;
     private readonly ILikeRepository _likeRepo;
     private readonly INotificationService _notificationService;
+    private readonly IFeedService _feedService;
     public PostService(IPostRepository postRepository, IConfiguration configuration,
         IUserRepository userRepository, IFileService fileService, IPostFileRepository postFileRepository,
-        ILikeRepository likeRepository, INotificationService notificationService)
+        ILikeRepository likeRepository, INotificationService notificationService, IFeedService feedService)
     {
         _postRepo = postRepository;
         _fileUploadBaseUrl = configuration["FileUploadServer:BaseUrl"]!;
@@ -29,6 +30,7 @@ public class PostService : IPostService
         _postFileRepo = postFileRepository;
         _likeRepo = likeRepository;
         _notificationService = notificationService;
+        _feedService = feedService;
     }
 
     public async Task<Result<PostResponse>> CreatePostAsync(CreatePostRequest request, Guid currentUserId)
@@ -38,13 +40,16 @@ public class PostService : IPostService
             return Result.Failure<PostResponse>(new Error("CreatePost.UserNotFount", "User not found"));
 
         Post newPost = await _postRepo.AddAsync(request.ToEntity(currentUserId));
-        return Result.Success(
-            newPost.ToResponse(
-                _fileUploadBaseUrl,
-                0,
-                false
-            )
+        var postResponse = newPost.ToResponse(
+            _fileUploadBaseUrl,
+            0,
+            false
         );
+
+        // Send real-time feed notification
+        await _feedService.NotifyNewPostAsync(currentUserId, postResponse);
+
+        return Result.Success(postResponse);
     }
 
     public async Task<Result> DeletePostAsync(Guid postId)
@@ -53,13 +58,29 @@ public class PostService : IPostService
         if (post is null)
             return Result.Failure<PostResponse>(new Error("Post.NotFound", "Post not found"));
 
+        var authorId = post.UserId;
         await _postRepo.DeleteAsync(post);
+
+        // Send real-time feed notification
+        await _feedService.NotifyPostDeletedAsync(authorId, postId);
+
         return Result.Success();
     }
 
     public async Task<Result<CursorList<PostResponse>>> GetPostsAsync(PostQueryParameters query)
     {
         CursorList<PostResponse> posts = await _postRepo.GetPostsResponseAsync(query, _fileUploadBaseUrl);
+        return Result.Success(posts);
+    }
+
+    public async Task<Result<CursorList<PostResponse>>> GetPostsByUserIdAsync(Guid userId, PostQueryParameters query, Guid? currentUserId = null)
+    {
+        // Verify user exists
+        User? user = await _userRepo.GetByIdAsync(userId);
+        if (user is null)
+            return Result.Failure<CursorList<PostResponse>>(new Error("User.NotFound", "User not found"));
+
+        CursorList<PostResponse> posts = await _postRepo.GetPostsByUserIdResponseAsync(userId, query, _fileUploadBaseUrl, currentUserId);
         return Result.Success(posts);
     }
 
@@ -105,13 +126,17 @@ public class PostService : IPostService
         post.Content = request.Content;
         post.Privacy = request.Privacy;
         await _postRepo.UpdateAsync(post);
-        return Result.Success(
-            post.ToResponse(
-                _fileUploadBaseUrl,
-                await _likeRepo.GetTargetLikeNumber(postId, LikeType.Post),
-                await _likeRepo.IsUserLiked(currentUserId, postId, LikeType.Post)
-            )
+        
+        var updatedPostResponse = post.ToResponse(
+            _fileUploadBaseUrl,
+            await _likeRepo.GetTargetLikeNumber(postId, LikeType.Post),
+            await _likeRepo.IsUserLiked(currentUserId, postId, LikeType.Post)
         );
+
+        // Send real-time feed notification
+        await _feedService.NotifyPostUpdatedAsync(currentUserId, updatedPostResponse);
+
+        return Result.Success(updatedPostResponse);
     }
 
     public async Task<Result<IEnumerable<PostFileResponse>>> AddPostFileAsync(Guid postId, IFormFileCollection files)

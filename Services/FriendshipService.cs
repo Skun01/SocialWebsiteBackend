@@ -117,4 +117,35 @@ public class FriendshipService : IFriendshipService
 
         return Result.Success();
     }
+
+    public async Task<Result<FriendshipStatusResponse>> GetFriendshipStatusAsync(Guid currentUserId, Guid targetUserId)
+    {
+        if (currentUserId == targetUserId)
+        {
+            return Result.Success(new FriendshipStatusResponse(
+                FriendshipStatus.Accepted, // Self is always "accepted"
+                "This is your own profile"
+            ));
+        }
+
+        var status = await _friendshipRepo.GetFriendshipStatusAsync(currentUserId, targetUserId);
+        
+        if (status == null)
+        {
+            return Result.Success(new FriendshipStatusResponse(
+                FriendshipStatus.Rejected, // Use Rejected to indicate "no relationship"
+                "No friendship relationship"
+            ));
+        }
+
+        string message = status switch
+        {
+            FriendshipStatus.Pending => "Friend request pending",
+            FriendshipStatus.Accepted => "You are friends",
+            FriendshipStatus.Rejected => "Friend request was declined",
+            _ => "Unknown status"
+        };
+
+        return Result.Success(new FriendshipStatusResponse(status.Value, message));
+    }
 }

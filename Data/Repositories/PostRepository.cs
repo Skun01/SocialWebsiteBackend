@@ -101,6 +101,58 @@ public class PostRepository : IPostRepository
         return new CursorList<PostResponse>(posts, nextCursor, hasNextPage);
     }
 
+    public async Task<CursorList<PostResponse>> GetPostsByUserIdResponseAsync(Guid userId, PostQueryParameters query, string baseUrl, Guid? currentUserId = null)
+    {
+        var baseQuery = _context.Posts.AsNoTracking()
+            .Where(p => p.UserId == userId);
+
+        baseQuery = baseQuery
+            .OrderByDescending(p => p.CreatedAt)
+            .ThenByDescending(p => p.Id);
+
+        var decodedCursor = CursorHelper.DecodeCursor(query.Cursor);
+        if (decodedCursor.HasValue)
+        {
+            var (cursorCreatedAt, cursorId) = decodedCursor.Value;
+            baseQuery = baseQuery.Where(p =>
+                p.CreatedAt < cursorCreatedAt ||
+                (p.CreatedAt == cursorCreatedAt && p.Id.CompareTo(cursorId) < 0)
+            );
+        }
+
+        var posts = await baseQuery
+        .Take(query.PageSize + 1)
+        .Select(p => new PostResponse(
+            p.Id,
+            p.User.Id,
+            p.User.Username,
+            p.User.ProfilePictureUrl ?? "",
+            p.Content,
+            p.Privacy,
+            _context.Likes.Count(l => l.Type == LikeType.Post && l.TargetId == p.Id),
+            currentUserId.HasValue && _context.Likes.Any(l => l.Type == LikeType.Post && l.TargetId == p.Id && l.UserId == currentUserId.Value),
+            p.Comments.Count,
+            p.Files.Select(f => f.ToResponse(baseUrl)).ToList(),
+            p.CreatedAt,
+            p.UpdatedAt
+        ))
+        .ToListAsync();
+
+        bool hasNextPage = posts.Count > query.PageSize;
+        string? nextCursor = null;
+        if (hasNextPage && posts.Count > query.PageSize)
+        {
+            posts.RemoveAt(posts.Count - 1);
+            if (posts.Any())
+            {
+                var lastItem = posts.Last();
+                nextCursor = CursorHelper.EncodeCursor(lastItem.CreatedAt, lastItem.Id);
+            }
+        }
+
+        return new CursorList<PostResponse>(posts, nextCursor, hasNextPage);
+    }
+
     public async Task<Post?> GetByIdAsync(Guid id)
     {
         // check if data exist in cache:
