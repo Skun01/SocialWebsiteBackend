@@ -70,10 +70,10 @@ public class UserRepository : IUserRepository
 
     public async Task UpdateVerifyEmailByIdAsync(Guid userId, bool IsEmailVerified)
     {
-        User? user = _context.Users.FirstOrDefault(u => u.Id == userId);
+        User? user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
         if (user is null)
             return;
-
+        
         user.IsEmailVerified = IsEmailVerified;
         user.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();

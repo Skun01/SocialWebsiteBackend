@@ -88,12 +88,14 @@ public class PostRepository : IPostRepository
 
         bool hasNextPage = posts.Count > query.PageSize;
         string? nextCursor = null;
-        if (hasNextPage)
+        if (hasNextPage && posts.Count > query.PageSize)
         {
-            posts.RemoveAt(query.PageSize);
-            var lastItem = posts.Last();
-            if(lastItem != null)
+            posts.RemoveAt(posts.Count - 1); // Remove last item safely
+            if (posts.Any())
+            {
+                var lastItem = posts.Last();
                 nextCursor = CursorHelper.EncodeCursor(lastItem.CreatedAt, lastItem.Id);
+            }
         }
 
         return new CursorList<PostResponse>(posts, nextCursor, hasNextPage);
@@ -134,7 +136,14 @@ public class PostRepository : IPostRepository
     public async Task UpdatePrivacy(Guid postId, PostPrivacy privacy)
     {
         Post? post = await _context.Posts.FindAsync(postId);
-        post!.Privacy = privacy;
+        if (post is null)
+            return; // hoặc throw new InvalidOperationException($"Post with ID {postId} not found");
+        
+        post.Privacy = privacy;
+        post.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+        
+        // remove cache
+        _cacheService.Remove($"Post_{postId}");
     }
 }
