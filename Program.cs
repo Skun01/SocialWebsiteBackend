@@ -78,6 +78,8 @@ builder.Services.AddScoped<ICommentService, CommentService>();
 builder.Services.AddScoped<IChatService, ChatService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IFriendshipService, FriendshipService>();
+// Database seeder
+builder.Services.AddScoped<IDatabaseSeeder, DatabaseSeeder>();
 // Password hasher
 builder.Services.AddScoped<IPasswordHasher<User>, PasswordHasher<User>>();
 
@@ -158,6 +160,14 @@ builder.Services.AddScoped<IAuthorizationHandler, RoleAuthorizationHandler>();
 
 //APPLICATION
 var app = builder.Build();
+
+// Seed database on startup
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<IDatabaseSeeder>();
+    await seeder.SeedAsync();
+}
+
 // Middleware:
 app.UseStaticFiles();
 app.UseAuthentication();
